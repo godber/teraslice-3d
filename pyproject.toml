@@ -1,0 +1,11 @@
+[project]
+name = "teraslice-3d"
+version = "0.1.0"
+description = "A web app allows you to visualize the relationships between your Teraslice Jobs."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.115.12",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.8.1",
+]

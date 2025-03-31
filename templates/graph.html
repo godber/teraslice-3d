@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style> body { margin: 0; } </style>
+  <script src="/static/3d-force-graph.js"></script>
+</head>
+<body>
+  <div id="3d-graph"></div>
+  <script>
+    const elem = document.getElementById('3d-graph');
+
+    const Graph = new ForceGraph3D(elem)
+      .jsonUrl('/pipeline_graph')
+      .nodeAutoColorBy('connector_type')
+      .nodeLabel(node => `${node.id}`)
+      .linkLabel(link => `${link.name}`)
+      .linkWidth(2)
+      .linkText(link => `${link.name}`)
+      .onLinkClick(link => window.open(`${link.url}`, '_blank'));
+  </script>
+
+</body>
+</html>
