@@ -33,6 +33,62 @@ templates = Jinja2Templates(directory="templates")
 async def get_graph_page(request: Request):
     return templates.TemplateResponse("graph.html", {"request": request})
 
+def process_source_node(op):
+    if op['_op'] == 'kafka_reader':
+        # souce_node -> kafka_cluster1:topic1
+        source_type = 'KAFKA'
+        source_node = f"{op['connection']}:{op['topic']}"
+    else:
+        logger.warning('MISSING SOURCE')
+
+    return source_node, source_type
+
+def process_destination_node(op, job):
+    destination_nodes = []
+    destination_type = None
+
+    if op['_op'] == 'kafka_sender':
+        # destination_node -> kafka_cluster1:topic1
+        destination_nodes.append(f"{op['connection']}:{op['topic']}")
+        destination_type = 'KAFKA'
+    elif op['_op'] == 'elasticsearch_bulk':
+        # destination_node -> es_cluster1:index1
+        destination_nodes.append(f"{op['connection']}:{op['index']}")
+        destination_type = 'ES'
+    elif op['_op'] == 'routed_sender':
+        routed_sender_api = None
+
+        # loop over all APIs to find the one used by the routed sender
+        for api in job['apis']:
+            if api['_name'] == op['api_name']:
+                routed_sender_api = api
+
+        if 'index' in routed_sender_api:
+            destination_type = 'ES'
+        elif 'topic' in routed_sender_api:
+            destination_type = 'KAFKA'
+
+        # suffix is the last part of the destination topic or index
+        # prefix is the beginning part of the destination kafka topic or
+        # elasticsearch index, it comes from the matching api's index or
+        # topic value
+        #
+        for suffix, connection in op['routing'].items():
+            # print(suffix, connection)
+            if destination_type == 'ES':
+                destination_nodes.append(f"{connection}:{api['index']}-{suffix}")
+            elif destination_type == 'KAFKA':
+                destination_nodes.append(f"{connection}:{api['topic']}-{suffix}")
+            else:
+                logger.warning('UNKNOWN!!!!')
+    elif op['_op'] == 'count_by_field':
+        # FIXME: I am not sure how to handle these.
+        logger.debug(f"\t{op}")
+    else:
+        logger.warning('\tMISSING DESTINATION')
+        logger.warning(f"\t{op}")
+    return destination_nodes, destination_type
+
 def process_job(job):
     """
     Given a teraslice job, this function will inspect the first and last
@@ -55,86 +111,9 @@ def process_job(job):
     source_type = None
     destination_nodes = []
     destination_type = None
-    # process input nodes
-    # - kafka_reader
-    if first_op['_op'] == 'kafka_reader':
-        # souce_node -> kafka_cluster1:topic1
-        source_type = 'KAFKA'
-        source_node = f"{first_op['connection']}:{first_op['topic']}"
-    else:
-        logger.warning('MISSING SOURCE')
 
-    # process output nodes
-    # - kafka_sender
-    # - elasticsearch_bulk
-    # - routed_sender
-    if last_op['_op'] == 'kafka_sender':
-        # destination_node -> kafka_cluster1:topic1
-        destination_nodes.append(f"{last_op['connection']}:{last_op['topic']}")
-        destination_type = 'KAFKA'
-    elif last_op['_op'] == 'elasticsearch_bulk':
-        # destination_node -> es_cluster1:index1
-        destination_nodes.append(f"{last_op['connection']}:{last_op['index']}")
-        destination_type = 'ES'
-    elif last_op['_op'] == 'routed_sender':
-        routed_sender_api = None
-
-        # loop over all APIs to find the one used by the routed sender
-        for api in job['apis']:
-            if api['_name'] == last_op['api_name']:
-                routed_sender_api = api
-
-        if 'index' in routed_sender_api:
-            destination_type = 'ES'
-        elif 'topic' in routed_sender_api:
-            destination_type = 'KAFKA'
-
-        # process last_op routing
-        if '**' in last_op['routing']:
-            # TODO - Understand what `**` routing can really do, this block
-            # of code is identical to the `else` branch below, maybe this
-            # conditional is not actually needed.
-
-            # suffix is the last part of the destination topic or index
-            # prefix is the beginning part of the destination kafka topic or
-            # elasticsearch index, it comes from the matching api's index or
-            # topic value
-            #
-            for suffix, connection in last_op['routing'].items():
-                # print(suffix, connection)
-                if destination_type == 'ES':
-                    destination_nodes.append(f"{connection}:{api['index']}-{suffix}")
-                elif destination_type == 'KAFKA':
-                    destination_nodes.append(f"{connection}:{api['topic']}-{suffix}")
-                else:
-                    logger.warning('UNKNOWN!!!!')
-
-
-            # this uses a router in `job['operations'][-2]` or so, maybe `date_router`
-            logger.debug('\t'+ '='*5 + 'ROUTED SENDER OP' + '='*5)
-            logger.debug(f"{json.dumps(last_op, indent=2)}")
-            logger.debug('\t'+ '='*5 + 'ROUTED SENDER API' + '='*5)
-            logger.debug(f"{json.dumps(routed_sender_api, indent=2)}")
-        else:
-            # suffix is the last part of the destination topic or index
-            # prefix is the beginning part of the destination kafka topic or
-            # elasticsearch index, it comes from the matching api's index or
-            # topic value
-            #
-            for suffix, connection in last_op['routing'].items():
-                # print(suffix, connection)
-                if destination_type == 'ES':
-                    destination_nodes.append(f"{connection}:{api['index']}-{suffix}")
-                elif destination_type == 'KAFKA':
-                    destination_nodes.append(f"{connection}:{api['topic']}-{suffix}")
-                else:
-                    logger.warning('UNKNOWN!!!!')
-    elif last_op['_op'] == 'count_by_field':
-        # FIXME: I am not sure how to handle these.
-        logger.debug(f"\t{last_op}")
-    else:
-        logger.warning('\tMISSING DESTINATION')
-        logger.warning(f"\t{last_op}")
+    source_node, source_type = process_source_node(first_op)
+    destination_nodes, destination_type = process_destination_node(last_op, job)
 
     return (source_node, source_type, destination_nodes, destination_type)
 
