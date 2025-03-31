@@ -11,5 +11,5 @@ cluster.
 ## Development
 
 ```bash
-TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev main.py
+TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 ```
