@@ -13,16 +13,15 @@ from fastapi.requests import Request
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Get settings from Environment with Pydantic BaseSettings
 class Settings(BaseSettings):
     teraslice_url: str = "http://localhost:5678"
 
-    model_config = SettingsConfigDict(env_file=".env")
-
 settings = Settings()
 
+# Setup logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=log_level)
-
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -139,19 +138,24 @@ def process_job(job):
 
     return (source_node, source_type, destination_nodes, destination_type)
 
+@app.get("/jobs/{size}", response_class=JSONResponse)
+async def get_jobs(size: int):
+    url = settings.teraslice_url
+
+    params = {'size': size, 'active': 'true', 'ex': '_status'}
+    # FIXME: figure out how to handle custom CA cert
+    r = httpx.get(f'{url}/jobs', params=params, verify=False)
+
+    return r.json()
 
 @app.get("/pipeline_graph", response_class=JSONResponse)
 async def get_pipeline_graph():
-    url = settings.teraslice_url
-
-    params = {'size': '500', 'active': 'true', 'ex': '_status'}
-    r = httpx.get(f'{url}/jobs', params=params, verify=False)
-
+    r = await get_jobs(500)
 
     nodes = []
     links = []    # {'source': '', 'target': ''}
-    for job in r.json():
-        logger.debug(f"{job['name']} - {job['ex']['_status']} - {url}/jobs/{job['job_id']}",)
+    for job in r:
+        logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
 
         source_node, source_type, destination_nodes, destination_type = process_job(job)
 
@@ -177,7 +181,7 @@ async def get_pipeline_graph():
                     'target': destination_node,
                     'job_id': job['job_id'],
                     'name': job['name'],
-                    'url': f"{url}/jobs/{job['job_id']}",
+                    'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
                 }
             )
         # print()
