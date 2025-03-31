@@ -13,3 +13,10 @@ cluster.
 ```bash
 TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 ```
+
+### Docker
+
+```bash
+docker build -t teraslice-3d .
+docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 teraslice-3d
+```
