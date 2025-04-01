@@ -117,11 +117,11 @@ def process_job(job):
 
     return (source_node, source_type, destination_nodes, destination_type)
 
-@app.get("/jobs/{size}", response_class=JSONResponse)
-async def get_jobs(size: int):
+@app.get("/jobs", response_class=JSONResponse)
+async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None | str = '_status'):
     url = settings.teraslice_url
 
-    params = {'size': size, 'active': 'true', 'ex': '_status'}
+    params = {'size': size, 'active': active, 'ex': ex}
     # FIXME: figure out how to handle custom CA cert
     r = httpx.get(f'{url}/jobs', params=params, verify=False)
 
@@ -129,7 +129,10 @@ async def get_jobs(size: int):
 
 @app.get("/pipeline_graph", response_class=JSONResponse)
 async def get_pipeline_graph():
-    r = await get_jobs(500)
+    # TODO: The size here is hard coded to an arbitrarily large number to try
+    # and get all of the jobs, this is dumb but the Teraslice API doesn't tell
+    # us how far to page.
+    r = await get_jobs(size=500)
 
     nodes = []
     links = []    # {'source': '', 'target': ''}
