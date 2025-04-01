@@ -56,27 +56,26 @@ async def get_pipeline_graph():
         logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
 
         job_info = JobInfo(job, logger)
-        source_node, source_type, destination_nodes, destination_type = job_info.process_job()
 
         nodes.append(
             {
-                'id': source_node,
-                'connector_type': source_type
+                'id': job_info.source_node,
+                'connector_type': job_info.source_type
             }
         )
 
         # print(f"\t{source_type} SOURCE: \t{source_node}")
-        for destination_node in destination_nodes:
+        for destination_node in job_info.destination_nodes:
             nodes.append(
                 {
                     'id': destination_node,
-                    'connector_type': destination_type
+                    'connector_type': job_info.destination_type
                 }
             )
             # print(f"\t{destination_type} DESTINATION: {destination_node}")
             links.append(
                 {
-                    'source': source_node,
+                    'source': job_info.source_node,
                     'target': destination_node,
                     'job_id': job['job_id'],
                     'name': job['name'],

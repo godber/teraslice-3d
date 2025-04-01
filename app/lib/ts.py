@@ -1,34 +1,53 @@
 class JobInfo:
     def __init__(self, job, logger):
+        """
+        Given a teraslice job, this class will inspect the first and last
+        operators, which are assumed to be the source and destination nodes of
+        the job, and determine the source and destination clusters and their
+        types.
+
+        The class has the following public properties:
+        * source_node
+          * `<CONNECTOR>:<TOPIC|INDEX>`, e.g. `kafka_cluster1:topic1`
+          * TODO: Kafka only at the moment
+        * source_type
+          * `KAFKA` or `ES`
+        * destination_nodes - an array of one or more `destination_node` strings
+          * [`kafka_cluster1:topic-a-1`, `kafka_cluster1:topic-a-2`]
+        * destination_type
+          * `KAFKA` or `ES`
+        """
         self.job = job
         self.logger = logger
+        self.source_node = None
+        self.source_type = None
+        self.destination_nodes = []
+        self.destination_type = None
+
+        self.process_source_node()
+        self.process_destination_node()
 
     def process_source_node(self):
         op = self.job['operations'][0]
 
         if op['_op'] == 'kafka_reader':
             # souce_node -> kafka_cluster1:topic1
-            source_type = 'KAFKA'
-            source_node = f"{op['connection']}:{op['topic']}"
+            self.source_type = 'KAFKA'
+            self.source_node = f"{op['connection']}:{op['topic']}"
         else:
             self.logger.warning('MISSING SOURCE')
-
-        return source_node, source_type
 
     def process_destination_node(self):
         op = self.job['operations'][-1]
 
-        destination_nodes = []
-        destination_type = None
-
         if op['_op'] == 'kafka_sender':
             # destination_node -> kafka_cluster1:topic1
-            destination_nodes.append(f"{op['connection']}:{op['topic']}")
-            destination_type = 'KAFKA'
+            self.destination_nodes.append(f"{op['connection']}:{op['topic']}")
+            self.destination_type = 'KAFKA'
         elif op['_op'] == 'elasticsearch_bulk':
             # destination_node -> es_cluster1:index1
-            destination_nodes.append(f"{op['connection']}:{op['index']}")
-            destination_type = 'ES'
+            self.destination_nodes.append(f"{op['connection']}:{op['index']}")
+            self.destination_type = 'ES'
         elif op['_op'] == 'routed_sender':
             routed_sender_api = None
 
@@ -38,9 +57,9 @@ class JobInfo:
                     routed_sender_api = api
 
             if 'index' in routed_sender_api:
-                destination_type = 'ES'
+                self.destination_type = 'ES'
             elif 'topic' in routed_sender_api:
-                destination_type = 'KAFKA'
+                self.destination_type = 'KAFKA'
 
             # suffix is the last part of the destination topic or index
             # prefix is the beginning part of the destination kafka topic or
@@ -49,10 +68,10 @@ class JobInfo:
             #
             for suffix, connection in op['routing'].items():
                 # print(suffix, connection)
-                if destination_type == 'ES':
-                    destination_nodes.append(f"{connection}:{api['index']}-{suffix}")
-                elif destination_type == 'KAFKA':
-                    destination_nodes.append(f"{connection}:{api['topic']}-{suffix}")
+                if self.destination_type == 'ES':
+                    self.destination_nodes.append(f"{connection}:{api['index']}-{suffix}")
+                elif self.destination_type == 'KAFKA':
+                    self.destination_nodes.append(f"{connection}:{api['topic']}-{suffix}")
                 else:
                     self.logger.warning('UNKNOWN!!!!')
         elif op['_op'] == 'count_by_field':
@@ -61,24 +80,3 @@ class JobInfo:
         else:
             self.logger.warning('\tMISSING DESTINATION')
             self.logger.warning(f"\t{op}")
-        return destination_nodes, destination_type
-
-    def process_job(self):
-        """
-        Given a teraslice job, this function will inspect the first and last
-        operators, which are assumed to be the input and outputs of the job
-        and return the following in a tuple
-        * source_node
-        * `<CONNECTOR>:<TOPIC|INDEX>`, e.g. `kafka_cluster1:topic1`
-        * TODO: Kafka only at the moment
-        * source_type
-        * `KAFKA` or `ES`
-        * destination_nodes - an array of one or more `destination_node` strings
-        * [`kafka_cluster1:topic-a-1`, `kafka_cluster1:topic-a-2`]
-        * destination_type
-        * `KAFKA` or `ES`
-        """
-        source_node, source_type = self.process_source_node()
-        destination_nodes, destination_type = self.process_destination_node()
-
-        return (source_node, source_type, destination_nodes, destination_type)
