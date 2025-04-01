@@ -12,6 +12,7 @@ cluster.
 
 ```bash
 TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 ```
 
 ### Docker
