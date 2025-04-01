@@ -33,7 +33,9 @@ templates = Jinja2Templates(directory="templates")
 async def get_graph_page(request: Request):
     return templates.TemplateResponse("graph.html", {"request": request})
 
-def process_source_node(op):
+def process_source_node(job):
+    op = job['operations'][0]
+
     if op['_op'] == 'kafka_reader':
         # souce_node -> kafka_cluster1:topic1
         source_type = 'KAFKA'
@@ -43,7 +45,9 @@ def process_source_node(op):
 
     return source_node, source_type
 
-def process_destination_node(op, job):
+def process_destination_node(job):
+    op = job['operations'][-1]
+
     destination_nodes = []
     destination_type = None
 
@@ -104,16 +108,13 @@ def process_job(job):
     * destination_type
       * `KAFKA` or `ES`
     """
-    first_op = job['operations'][0]
-    last_op = job['operations'][-1]
-
     source_node = None
     source_type = None
     destination_nodes = []
     destination_type = None
 
-    source_node, source_type = process_source_node(first_op)
-    destination_nodes, destination_type = process_destination_node(last_op, job)
+    source_node, source_type = process_source_node(job)
+    destination_nodes, destination_type = process_destination_node(job)
 
     return (source_node, source_type, destination_nodes, destination_type)
 
