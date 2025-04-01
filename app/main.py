@@ -11,7 +11,7 @@ from fastapi.requests import Request
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .lib.ts import process_job
+from .lib.ts import JobInfo
 
 # Get settings from Environment with Pydantic BaseSettings
 class Settings(BaseSettings):
@@ -55,7 +55,8 @@ async def get_pipeline_graph():
     for job in r:
         logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
 
-        source_node, source_type, destination_nodes, destination_type = process_job(job, logger)
+        job_info = JobInfo(job, logger)
+        source_node, source_type, destination_nodes, destination_type = job_info.process_job()
 
         nodes.append(
             {
