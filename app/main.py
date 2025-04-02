@@ -57,38 +57,21 @@ async def get_pipeline_graph():
 
         job_info = JobInfo(job, logger)
 
-        nodes.append(
-            {
-                'id': job_info.source_node,
-                'connector_type': job_info.source_type
-            }
-        )
+        nodes.append(job_info.source)
 
-        # print(f"\t{source_type} SOURCE: \t{source_node}")
-        for destination_node in job_info.destination_nodes:
-            nodes.append(
-                {
-                    'id': destination_node,
-                    'connector_type': job_info.destination_type
-                }
-            )
-            # print(f"\t{destination_type} DESTINATION: {destination_node}")
+        for destination in job_info.destinations:
+            nodes.append(destination)
             links.append(
                 {
-                    'source': job_info.source_node,
-                    'target': destination_node,
+                    'source': job_info.source.id,
+                    'target': destination.id,
                     'job_id': job['job_id'],
                     'name': job['name'],
                     'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
                 }
             )
-        # print()
-
-    # remove duplicates from nodes
-    unique_nodes = [dict(t) for t in {tuple(sorted(d.items())) for d in nodes}]
-
 
     return {
-        'nodes': unique_nodes,
+        'nodes': list(set(nodes)),
         'links': links
     }
