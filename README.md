@@ -8,6 +8,13 @@ Kafka topic that is in turn read by another downstream job and so on, until one
 or more terminal jobs write the final data into an OpenSearch (or ElasticSearch)
 cluster.
 
+### Teraslice Configuration Assumptions
+
+Currently the code here assumes that you name your Kafka connectors beginning
+with `kafka` and that there are special connectors or topics that include the
+string `incoming`.  These will be treated specially.  These are based on
+internal naming conventions that not everyone may follow.
+
 ## Development
 
 ```bash

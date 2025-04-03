@@ -11,12 +11,32 @@
 
     const Graph = new ForceGraph3D(elem)
       .jsonUrl('/pipeline_graph')
-      .nodeAutoColorBy('connector_type')
+      .nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return 'yellow'
+          }
+          return 'blue'
+        } else {
+          return 'green'
+        }
+      })
       .nodeLabel(node => `${node.id}`)
-      .linkLabel(link => `${link.name}`)
-      .linkWidth(2)
-      .linkText(link => `${link.name}`)
-      .onLinkClick(link => window.open(`${link.url}`, '_blank'));
+      .linkLabel(link => `${link.name} - ${link.workers} workers - ${link.status}`)
+      // Dynamically scale linkWidth based on workers
+      .linkWidth(link => {
+        // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
+        newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1
+        return newSize
+      })
+      .linkColor(link => {
+        if (link.status == 'running') return 'green'
+        else if (link.status == 'starting') return 'palegreen'
+        else if (link.status == 'stopped') return 'yellow'
+        else if (link.status == 'stopping') return 'orange'
+        else if (link.status == 'failing') return 'red'
+      })
+      .onLinkClick(link => window.open(`${link.url}`, '_blank'))
   </script>
 
 </body>

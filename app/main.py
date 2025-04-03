@@ -68,6 +68,8 @@ async def get_pipeline_graph():
                     'job_id': job['job_id'],
                     'name': job['name'],
                     'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
+                    'workers': job['workers'],
+                    'status': job['ex']['_status']
                 }
             )
 
