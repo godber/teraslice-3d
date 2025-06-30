@@ -9,3 +9,15 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic-settings>=2.8.1",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+]
