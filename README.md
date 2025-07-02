@@ -28,3 +28,21 @@ LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi de
 docker build -t teraslice-3d .
 docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 teraslice-3d
 ```
+
+### Testing
+
+Run the unit tests to validate job parsing logic:
+
+```bash
+# Install test dependencies
+uv add --group test pytest pytest-asyncio
+
+# Run all tests
+uv run pytest
+
+# Run with verbose output
+uv run pytest -v
+
+# Run only unit tests
+uv run pytest tests/unit/ -v
+```
