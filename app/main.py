@@ -16,6 +16,7 @@ from .lib.ts import JobInfo
 # Get settings from Environment with Pydantic BaseSettings
 class Settings(BaseSettings):
     teraslice_url: str = "http://localhost:5678"
+    cacert_file: str | None = None
 
 settings = Settings()
 
@@ -38,8 +39,22 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
     url = settings.teraslice_url
 
     params = {'size': size, 'active': active, 'ex': ex}
-    # FIXME: figure out how to handle custom CA cert
-    r = httpx.get(f'{url}/jobs', params=params, verify=False)
+    
+    # Configure SSL verification - use custom CA cert if provided
+    verify_ssl = True
+    if settings.cacert_file:
+        verify_ssl = settings.cacert_file
+        logger.info(f"Using custom CA certificate: {settings.cacert_file}")
+    
+    try:
+        r = httpx.get(f'{url}/jobs', params=params, verify=verify_ssl)
+        r.raise_for_status()  # Raise exception for HTTP errors
+    except httpx.SSLError as e:
+        logger.error(f"SSL certificate verification failed: {e}")
+        raise
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error occurred: {e}")
+        raise
 
     return r.json()
 
