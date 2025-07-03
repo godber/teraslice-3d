@@ -206,3 +206,98 @@ def empty_operations_job():
         "operations": [],
         "apis": []
     }
+
+
+def kafka_reader_default_connection_job():
+    """kafka_reader with default connection"""
+    return {
+        "job_id": "kafka-reader-default-001",
+        "name": "kafka-reader-default-pipeline",
+        "workers": 2,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "topic": "input-topic"
+            },
+            {
+                "_op": "elasticsearch_bulk",
+                "connection": "es_cluster1",
+                "index": "output-index"
+            }
+        ],
+        "apis": []
+    }
+
+
+def kafka_sender_default_connection_job():
+    """kafka_sender with default connection"""
+    return {
+        "job_id": "kafka-sender-default-001",
+        "name": "kafka-sender-default-pipeline",
+        "workers": 2,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "connection": "kafka_cluster1",
+                "topic": "input-topic"
+            },
+            {
+                "_op": "kafka_sender",
+                "topic": "output-topic"
+            }
+        ],
+        "apis": []
+    }
+
+
+def all_default_connections_job():
+    """Job with all default connections"""
+    return {
+        "job_id": "all-default-001",
+        "name": "all-default-connections-pipeline",
+        "workers": 1,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "topic": "input-topic"
+            },
+            {
+                "_op": "kafka_sender",
+                "topic": "output-topic"
+            }
+        ],
+        "apis": []
+    }
+
+
+def routed_sender_default_connections_job():
+    """routed_sender with default connections in routing"""
+    return {
+        "job_id": "routed-default-001",
+        "name": "routed-sender-default-pipeline",
+        "workers": 3,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "topic": "input-data"
+            },
+            {
+                "_op": "routed_sender",
+                "api_name": "kafka_router",
+                "routing": {
+                    "type-a": "default",
+                    "type-b": "kafka_cluster2"
+                }
+            }
+        ],
+        "apis": [
+            {
+                "_name": "kafka_router",
+                "topic": "processed"
+            }
+        ]
+    }
