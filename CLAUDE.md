@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Instructions for Claude Code
+
+* Always work on a branch and submit a PR.
+
 ## Project Overview
 
 This is a FastAPI-based web application that visualizes Teraslice job pipelines in 3D. The app creates interactive network graphs showing data flow between jobs, from Kafka topics through processing jobs to final destinations like Elasticsearch.
@@ -12,7 +16,7 @@ This is a FastAPI-based web application that visualizes Teraslice job pipelines 
 
 ```bash
 # Basic development server
-TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+TERASLICE_URL="http://localhost:5678" uv run fastapi dev
 
 # With debug logging
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev

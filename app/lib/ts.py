@@ -42,7 +42,8 @@ class JobInfo:
         if op['_op'] == 'kafka_reader':
             # souce_node -> kafka_cluster1:topic1
             source = StorageNode(
-                id=f"{op['connection']}:{op['topic']}",
+                # if connection is not specified, Teraslice assumes 'default'
+                id=f"{op.get('connection', 'default')}:{op['topic']}",
                 connector_type='KAFKA'
             )
         else:
@@ -58,7 +59,7 @@ class JobInfo:
             destinations.append(
                 StorageNode(
                     # kafka_cluster1:topic1
-                    id=f"{op['connection']}:{op['topic']}",
+                    id=f"{op.get('connection', 'default')}:{op['topic']}",
                     connector_type='KAFKA'
                 )
             )
@@ -66,7 +67,7 @@ class JobInfo:
             destinations.append(
                 StorageNode(
                     # es_cluster1:index1
-                    id = f"{op['connection']}:{op['index']}",
+                    id = f"{op.get('connection', 'default')}:{op['index']}",
                     connector_type = 'ES'
                 )
             )

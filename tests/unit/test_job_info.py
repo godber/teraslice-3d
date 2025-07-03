@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from app.lib.ts import JobInfo, StorageNode
 from tests.fixtures.teraslice_jobs import (
     kafka_reader_to_elasticsearch_job,
+    kafka_reader_to_elasticsearch_default_job,
     kafka_reader_to_kafka_sender_job,
     routed_sender_kafka_job,
     routed_sender_elasticsearch_job,
@@ -81,6 +82,17 @@ class TestJobInfoDestinationNodes:
         assert dest.id == "es_cluster1:output-index"
         assert dest.connector_type == "ES"
     
+    def test_process_destination_nodes_elasticsearch_bulk_default(self):
+        """Test destination node processing for elasticsearch_bulk operation"""
+        job_data = kafka_reader_to_elasticsearch_default_job()
+        job_info = JobInfo(job_data, self.logger)
+        
+        assert len(job_info.destinations) == 1
+        dest = job_info.destinations[0]
+        assert dest.id == "default:output-index"
+        assert dest.connector_type == "ES"
+
+
     def test_process_destination_nodes_routed_sender_kafka(self):
         """Test destination node processing for routed_sender with Kafka destinations"""
         job_data = routed_sender_kafka_job()

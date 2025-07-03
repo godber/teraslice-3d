@@ -24,6 +24,26 @@ def kafka_reader_to_elasticsearch_job():
         "apis": []
     }
 
+def kafka_reader_to_elasticsearch_default_job():
+    """Simple kafka_reader -> elasticsearch_bulk job"""
+    return {
+        "job_id": "kafka-to-es-001",
+        "name": "kafka-to-elasticsearch-pipeline",
+        "workers": 3,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "connection": "kafka_cluster1",
+                "topic": "input-topic"
+            },
+            {
+                "_op": "elasticsearch_bulk",
+                "index": "output-index"
+            }
+        ],
+        "apis": []
+    }
 
 def kafka_reader_to_kafka_sender_job():
     """Simple kafka_reader -> kafka_sender job"""
