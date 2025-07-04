@@ -20,6 +20,9 @@ TERASLICE_URL="http://localhost:5678" uv run fastapi dev
 
 # With debug logging
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+
+# With custom CA certificate
+TERASLICE_URL="https://teraslice.example.com" CACERT_FILE="/path/to/ca.pem" uv run fastapi dev
 ```
 
 ### Docker Development
@@ -78,10 +81,10 @@ Environment variables:
 
 - `TERASLICE_URL`: Base URL for Teraslice API (required)
 - `LOG_LEVEL`: Logging level (default: INFO)
+- `CACERT_FILE`: Path to custom CA certificate file for SSL verification (optional)
 
 ### Known Limitations
 
 - Assumes Kafka connectors are named beginning with "kafka"
 - Special handling for connectors/topics containing "incoming"
 - Hard-coded job size limit of 500 for API calls
-- SSL verification disabled for Teraslice API calls
