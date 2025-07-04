@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "teraslice-3d.fullname" . }}-test-connection"
+  labels:
+    {{- include "teraslice-3d.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "teraslice-3d.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
