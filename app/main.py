@@ -54,10 +54,10 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
         r = httpx.get(f'{url}/jobs', params=params, verify=verify_ssl)
         r.raise_for_status()  # Raise exception for HTTP errors
     except httpx.SSLError as e:
-        logger.error(f"SSL certificate verification failed: {e}")
+        logger.error(f"SSL certificate verification failed when connecting to {url}: {e}")
         raise
     except httpx.HTTPError as e:
-        logger.error(f"HTTP error occurred: {e}")
+        logger.error(f"HTTP error occurred when connecting to {url}: {e}")
         raise
 
     return r.json()
