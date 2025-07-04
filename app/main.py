@@ -1,5 +1,6 @@
 import logging
 import os
+import ssl
 
 import httpx
 
@@ -9,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .lib.ts import JobInfo
@@ -16,7 +18,7 @@ from .lib.ts import JobInfo
 # Get settings from Environment with Pydantic BaseSettings
 class Settings(BaseSettings):
     teraslice_url: str = "http://localhost:5678"
-    cacert_file: str | None = None
+    cacert_file: Path | None = None
 
 settings = Settings()
 
@@ -41,10 +43,12 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
     params = {'size': size, 'active': active, 'ex': ex}
     
     # Configure SSL verification - use custom CA cert if provided
-    verify_ssl = True
     if settings.cacert_file:
-        verify_ssl = settings.cacert_file
+        ssl_context = ssl.create_default_context(cafile=str(settings.cacert_file))
+        verify_ssl = ssl_context
         logger.info(f"Using custom CA certificate: {settings.cacert_file}")
+    else:
+        verify_ssl = True
     
     try:
         r = httpx.get(f'{url}/jobs', params=params, verify=verify_ssl)
