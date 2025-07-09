@@ -19,14 +19,23 @@ internal naming conventions that not everyone may follow.
 
 ```bash
 TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run fastapi dev
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 ```
 
 ### Docker
 
 ```bash
+# Build image
 docker build -t teraslice-3d .
+
+# or Pull Image
+docker pull ghcr.io/godber/teraslice-3d:latest
+
 docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 teraslice-3d
+
+# Run image published on ghcr.io
+docker run -e TERASLICE_URL="http://teraslice.example.com" -e CACERT_FILE="$HOME/ca-bundle.pem" -p 8000:80 ghcr.io/godber/teraslice-3d:latest
 ```
 
 ### Testing

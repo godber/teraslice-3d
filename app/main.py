@@ -41,7 +41,7 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
     url = settings.teraslice_url
 
     params = {'size': size, 'active': active, 'ex': ex}
-    
+
     # Configure SSL verification - use custom CA cert if provided
     if settings.cacert_file:
         ssl_context = ssl.create_default_context(cafile=str(settings.cacert_file))
@@ -49,13 +49,10 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
         logger.info(f"Using custom CA certificate: {settings.cacert_file}")
     else:
         verify_ssl = True
-    
+
     try:
         r = httpx.get(f'{url}/jobs', params=params, verify=verify_ssl)
         r.raise_for_status()  # Raise exception for HTTP errors
-    except httpx.SSLError as e:
-        logger.error(f"SSL certificate verification failed when connecting to {url}: {e}")
-        raise
     except httpx.HTTPError as e:
         logger.error(f"HTTP error occurred when connecting to {url}: {e}")
         raise
