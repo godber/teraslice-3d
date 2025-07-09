@@ -3,22 +3,30 @@
 <head>
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.2/dist/lil-gui.umd.min.js"></script>
 </head>
 <body>
   <div id="3d-graph"></div>
   <script>
     const elem = document.getElementById('3d-graph');
 
+    // Color configuration object
+    const colors = {
+      kafkaIncoming: '#ffff00',  // yellow
+      kafkaOther: '#0000ff',     // blue
+      elasticsearch: '#00ff00'   // green
+    };
+
     const Graph = new ForceGraph3D(elem)
       .jsonUrl('/pipeline_graph')
       .nodeColor(node => {
         if (node.id.startsWith("kafka")) {
           if (node.id.includes("incoming")) {
-            return 'yellow'
+            return colors.kafkaIncoming;
           }
-          return 'blue'
+          return colors.kafkaOther;
         } else {
-          return 'green'
+          return colors.elasticsearch;
         }
       })
       .nodeLabel(node => `${node.id}`)
@@ -37,6 +45,51 @@
         else if (link.status == 'failing') return 'red'
       })
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
+
+    // Initialize lil-gui controls
+    const gui = new lil.GUI();
+    const colorFolder = gui.addFolder('Node Colors');
+    
+    colorFolder.addColor(colors, 'kafkaIncoming').name('Kafka Incoming').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+    
+    colorFolder.addColor(colors, 'kafkaOther').name('Kafka Other').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+    
+    colorFolder.addColor(colors, 'elasticsearch').name('Elasticsearch').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+    
+    colorFolder.open();
   </script>
 
 </body>
