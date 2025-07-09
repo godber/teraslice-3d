@@ -25,6 +25,21 @@ LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi de
 
 ### Docker
 
+Docker images are published here:
+
+https://github.com/godber/teraslice-3d/pkgs/container/teraslice-3d
+
+You can get the latest via this:
+
+```bash
+# use latest
+docker pull ghcr.io/godber/teraslice-3d:latest
+# or a release tag
+docker pull ghcr.io/godber/teraslice-3d:v0.0.2
+```
+
+Building or using more options
+
 ```bash
 # Build image
 docker build -t teraslice-3d .
@@ -35,7 +50,13 @@ docker pull ghcr.io/godber/teraslice-3d:latest
 docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 teraslice-3d
 
 # Run image published on ghcr.io
-docker run -e TERASLICE_URL="http://teraslice.example.com" -e CACERT_FILE="$HOME/ca-bundle.pem" -p 8000:80 ghcr.io/godber/teraslice-3d:latest
+docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 ghcr.io/godber/teraslice-3d:latest
+docker run \
+    -e TERASLICE_URL="https://teraslice.example.com" \
+    -e CACERT_FILE="/tmp/ca-bundle.pem" \
+    -p 8000:80 \
+    -v $HOME/ca-bundle.pem:/tmp/ca-bundle.pem \
+    ghcr.io/godber/teraslice-3d:latest
 ```
 
 ### Testing
