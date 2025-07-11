@@ -3,11 +3,9 @@
 <head>
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.2/dist/lil-gui.umd.min.js"></script>
-</head>
-<body>
-  <div id="3d-graph"></div>
-  <script>
+  <script type="module">
+    import { GUI } from '/static/lil-gui.esm.js';
+
     const elem = document.getElementById('3d-graph');
 
     // Color configuration object
@@ -34,7 +32,7 @@
       // Dynamically scale linkWidth based on workers
       .linkWidth(link => {
         // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
-        newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1
+        const newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1
         return newSize
       })
       .linkColor(link => {
@@ -47,9 +45,9 @@
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
 
     // Initialize lil-gui controls
-    const gui = new lil.GUI();
+    const gui = new GUI({title: "Teraslice 3D Graph Controls"});
     const colorFolder = gui.addFolder('Node Colors');
-    
+
     colorFolder.addColor(colors, 'kafkaIncoming').name('Kafka Incoming').onChange(() => {
       Graph.nodeColor(node => {
         if (node.id.startsWith("kafka")) {
@@ -62,7 +60,7 @@
         }
       });
     });
-    
+
     colorFolder.addColor(colors, 'kafkaOther').name('Kafka Other').onChange(() => {
       Graph.nodeColor(node => {
         if (node.id.startsWith("kafka")) {
@@ -75,7 +73,7 @@
         }
       });
     });
-    
+
     colorFolder.addColor(colors, 'elasticsearch').name('Elasticsearch').onChange(() => {
       Graph.nodeColor(node => {
         if (node.id.startsWith("kafka")) {
@@ -88,9 +86,11 @@
         }
       });
     });
-    
+
     colorFolder.open();
   </script>
-
+</head>
+<body>
+  <div id="3d-graph"></div>
 </body>
 </html>
