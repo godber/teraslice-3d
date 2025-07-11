@@ -3,22 +3,28 @@
 <head>
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
-</head>
-<body>
-  <div id="3d-graph"></div>
-  <script>
+  <script type="module">
+    import { GUI } from '/static/lil-gui.esm.js';
+
     const elem = document.getElementById('3d-graph');
+
+    // Color configuration object
+    const colors = {
+      kafkaIncoming: '#ffff00',  // yellow
+      kafkaOther: '#0000ff',     // blue
+      elasticsearch: '#00ff00'   // green
+    };
 
     const Graph = new ForceGraph3D(elem)
       .jsonUrl('/pipeline_graph')
       .nodeColor(node => {
         if (node.id.startsWith("kafka")) {
           if (node.id.includes("incoming")) {
-            return 'yellow'
+            return colors.kafkaIncoming;
           }
-          return 'blue'
+          return colors.kafkaOther;
         } else {
-          return 'green'
+          return colors.elasticsearch;
         }
       })
       .nodeLabel(node => `${node.id}`)
@@ -26,7 +32,7 @@
       // Dynamically scale linkWidth based on workers
       .linkWidth(link => {
         // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
-        newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1
+        const newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1
         return newSize
       })
       .linkColor(link => {
@@ -37,7 +43,54 @@
         else if (link.status == 'failing') return 'red'
       })
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
-  </script>
 
+    // Initialize lil-gui controls
+    const gui = new GUI({title: "Teraslice 3D Graph Controls"});
+    const colorFolder = gui.addFolder('Node Colors');
+
+    colorFolder.addColor(colors, 'kafkaIncoming').name('Kafka Incoming').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+
+    colorFolder.addColor(colors, 'kafkaOther').name('Kafka Other').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+
+    colorFolder.addColor(colors, 'elasticsearch').name('Elasticsearch').onChange(() => {
+      Graph.nodeColor(node => {
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      });
+    });
+
+    colorFolder.open();
+  </script>
+</head>
+<body>
+  <div id="3d-graph"></div>
 </body>
 </html>
