@@ -56,6 +56,13 @@
 
     // Set up post-processing after graph initialization
     function setupPostProcessing() {
+      // Check if THREE is available
+      if (typeof THREE === 'undefined') {
+        console.warn('THREE.js not loaded yet, retrying...');
+        setTimeout(setupPostProcessing, 100);
+        return;
+      }
+      
       const composer = Graph.postProcessingComposer();
       const scene = Graph.scene();
       const camera = Graph.camera();
@@ -143,7 +150,7 @@
         // Set up post-processing after graph is loaded
         setTimeout(() => {
           setupPostProcessing();
-        }, 100);
+        }, 500);
       } catch (error) {
         console.error('Error loading graph data:', error);
       }
