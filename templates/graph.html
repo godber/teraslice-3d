@@ -3,11 +3,12 @@
 <head>
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
+  <script src="https://unpkg.com/three@0.168.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/OutlinePass.js"></script>
   <script type="module">
     import { GUI } from '/static/lil-gui.esm.js';
-    import { EffectComposer } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/EffectComposer.js';
-    import { RenderPass } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/RenderPass.js';
-    import { OutlinePass } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/OutlinePass.js';
 
     const elem = document.getElementById('3d-graph');
 
@@ -60,7 +61,7 @@
       const camera = Graph.camera();
       const renderer = Graph.renderer();
       
-      outlinePass = new OutlinePass(
+      outlinePass = new THREE.OutlinePass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         scene,
         camera
