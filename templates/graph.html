@@ -4,9 +4,6 @@
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
   <script src="https://unpkg.com/three@0.168.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/EffectComposer.js"></script>
-  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/RenderPass.js"></script>
-  <script src="https://unpkg.com/three@0.168.0/examples/js/postprocessing/OutlinePass.js"></script>
   <script type="module">
     import { GUI } from '/static/lil-gui.esm.js';
 
@@ -55,7 +52,7 @@
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
 
     // Set up post-processing after graph initialization
-    function setupPostProcessing() {
+    async function setupPostProcessing() {
       // Check if THREE is available
       if (typeof THREE === 'undefined') {
         console.warn('THREE.js not loaded yet, retrying...');
@@ -63,25 +60,43 @@
         return;
       }
       
-      const composer = Graph.postProcessingComposer();
-      const scene = Graph.scene();
-      const camera = Graph.camera();
-      const renderer = Graph.renderer();
-      
-      outlinePass = new THREE.OutlinePass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        scene,
-        camera
-      );
-      
-      // Configure outline appearance
-      outlinePass.edgeStrength = 3.0;
-      outlinePass.edgeGlow = 0.5;
-      outlinePass.edgeThickness = 1.0;
-      outlinePass.visibleEdgeColor.set('#00ffff'); // cyan
-      outlinePass.hiddenEdgeColor.set('#0000ff'); // blue
-      
-      composer.addPass(outlinePass);
+      try {
+        // Dynamically import the post-processing modules
+        const { EffectComposer } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/EffectComposer.js');
+        const { RenderPass } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/RenderPass.js');
+        const { OutlinePass } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/OutlinePass.js');
+        
+        const scene = Graph.scene();
+        const camera = Graph.camera();
+        const renderer = Graph.renderer();
+        
+        // Create composer manually since we need to use the imported classes
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        
+        outlinePass = new OutlinePass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          scene,
+          camera
+        );
+        
+        // Configure outline appearance
+        outlinePass.edgeStrength = 3.0;
+        outlinePass.edgeGlow = 0.5;
+        outlinePass.edgeThickness = 1.0;
+        outlinePass.visibleEdgeColor.set('#00ffff'); // cyan
+        outlinePass.hiddenEdgeColor.set('#0000ff'); // blue
+        
+        composer.addPass(outlinePass);
+        
+        // Replace the graph's composer with our custom one
+        Graph.postProcessingComposer(composer);
+        
+        console.log('Post-processing setup complete');
+      } catch (error) {
+        console.error('Failed to load post-processing modules:', error);
+      }
     }
 
     // Initialize lil-gui controls
