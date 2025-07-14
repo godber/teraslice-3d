@@ -15,8 +15,11 @@
       elasticsearch: '#00ff00'   // green
     };
 
+    // Store original graph data for filtering
+    let originalData = null;
+
+    // Initialize graph without data first
     const Graph = new ForceGraph3D(elem)
-      .jsonUrl('/pipeline_graph')
       .nodeColor(node => {
         if (node.id.startsWith("kafka")) {
           if (node.id.includes("incoming")) {
@@ -48,7 +51,8 @@
     const gui = new GUI({title: "Teraslice 3D Graph Controls"});
     const colorFolder = gui.addFolder('Node Colors');
 
-    colorFolder.addColor(colors, 'kafkaIncoming').name('Kafka Incoming').onChange(() => {
+    // Function to update node colors (works with filtered data)
+    function updateNodeColors() {
       Graph.nodeColor(node => {
         if (node.id.startsWith("kafka")) {
           if (node.id.includes("incoming")) {
@@ -59,35 +63,104 @@
           return colors.elasticsearch;
         }
       });
-    });
+    }
 
-    colorFolder.addColor(colors, 'kafkaOther').name('Kafka Other').onChange(() => {
-      Graph.nodeColor(node => {
-        if (node.id.startsWith("kafka")) {
-          if (node.id.includes("incoming")) {
-            return colors.kafkaIncoming;
-          }
-          return colors.kafkaOther;
-        } else {
-          return colors.elasticsearch;
-        }
-      });
-    });
-
-    colorFolder.addColor(colors, 'elasticsearch').name('Elasticsearch').onChange(() => {
-      Graph.nodeColor(node => {
-        if (node.id.startsWith("kafka")) {
-          if (node.id.includes("incoming")) {
-            return colors.kafkaIncoming;
-          }
-          return colors.kafkaOther;
-        } else {
-          return colors.elasticsearch;
-        }
-      });
-    });
+    colorFolder.addColor(colors, 'kafkaIncoming').name('Kafka Incoming').onChange(updateNodeColors);
+    colorFolder.addColor(colors, 'kafkaOther').name('Kafka Other').onChange(updateNodeColors);
+    colorFolder.addColor(colors, 'elasticsearch').name('Elasticsearch').onChange(updateNodeColors);
 
     colorFolder.open();
+
+    // Add filtering controls
+    const filterFolder = gui.addFolder('Filtering');
+    const filterState = { 
+      nodeSearchTerm: '',
+      linkSearchTerm: ''
+    };
+
+    const nodeSearchController = filterFolder.add(filterState, 'nodeSearchTerm').name('Search Nodes').onChange(value => {
+      filterGraphData(value, filterState.linkSearchTerm);
+    });
+
+    const linkSearchController = filterFolder.add(filterState, 'linkSearchTerm').name('Search Links').onChange(value => {
+      filterGraphData(filterState.nodeSearchTerm, value);
+    });
+
+    filterFolder.add({ 
+      clear: () => {
+        filterState.nodeSearchTerm = '';
+        filterState.linkSearchTerm = '';
+        filterGraphData('', '');
+        nodeSearchController.updateDisplay();
+        linkSearchController.updateDisplay();
+      }
+    }, 'clear').name('Clear All Filters');
+
+    filterFolder.open();
+
+    // Load graph data and initialize
+    async function loadGraphData() {
+      try {
+        originalData = await fetch('/pipeline_graph').then(r => r.json());
+        Graph.graphData(originalData);
+      } catch (error) {
+        console.error('Error loading graph data:', error);
+      }
+    }
+
+    // Filter function for graph data
+    function filterGraphData(nodeSearchTerm = '', linkSearchTerm = '') {
+      if (!originalData) return;
+      
+      if (!nodeSearchTerm && !linkSearchTerm) {
+        Graph.graphData(originalData);
+        return;
+      }
+
+      // Filter nodes if node search term is provided
+      let filteredNodes = originalData.nodes;
+      if (nodeSearchTerm) {
+        filteredNodes = originalData.nodes.filter(node =>
+          node.id.toLowerCase().includes(nodeSearchTerm.toLowerCase())
+        );
+      }
+
+      // Filter links based on link search term and remaining nodes
+      let filteredLinks = originalData.links;
+      
+      // First filter by link search term if provided
+      if (linkSearchTerm) {
+        filteredLinks = originalData.links.filter(link =>
+          link.name.toLowerCase().includes(linkSearchTerm.toLowerCase())
+        );
+      }
+
+      // Then ensure we only keep links between remaining nodes
+      const nodeIds = new Set(filteredNodes.map(n => n.id));
+      filteredLinks = filteredLinks.filter(link => {
+        // Handle both string IDs and object references
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        return nodeIds.has(sourceId) && nodeIds.has(targetId);
+      });
+
+      // If we're filtering by links, we also need to include nodes that are connected by the filtered links
+      if (linkSearchTerm && !nodeSearchTerm) {
+        const linkedNodeIds = new Set();
+        filteredLinks.forEach(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          linkedNodeIds.add(sourceId);
+          linkedNodeIds.add(targetId);
+        });
+        filteredNodes = originalData.nodes.filter(node => linkedNodeIds.has(node.id));
+      }
+
+      Graph.graphData({ nodes: filteredNodes, links: filteredLinks });
+    }
+
+    // Load data when page loads
+    loadGraphData();
   </script>
 </head>
 <body>
