@@ -46,7 +46,7 @@ class JobInfo:
                 id=f"{op.get('connection', 'default')}:{op['topic']}",
                 connector_type='KAFKA'
             )
-        if op['_op'] == 'data_generator':
+        elif op['_op'] == 'data_generator':
             # source_node -> data_generator
             source = StorageNode(
                 id=f"data_generator",
