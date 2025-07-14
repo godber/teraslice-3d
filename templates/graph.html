@@ -3,7 +3,6 @@
 <head>
   <style> body { margin: 0; } </style>
   <script src="/static/3d-force-graph.js"></script>
-  <script src="https://unpkg.com/three@0.168.0/build/three.min.js"></script>
   <script type="module">
     import { GUI } from '/static/lil-gui.esm.js';
 
@@ -19,12 +18,18 @@
     // Store original graph data for filtering
     let originalData = null;
     
-    // Post-processing setup
-    let outlinePass = null;
+    // Store original node colors for highlighting
+    let highlightedNodes = new Set();
 
     // Initialize graph without data first
     const Graph = new ForceGraph3D(elem)
       .nodeColor(node => {
+        // Check if this node is highlighted
+        if (highlightedNodes.has(node.id)) {
+          return '#ff00ff'; // Bright magenta for highlighted nodes
+        }
+        
+        // Normal coloring
         if (node.id.startsWith("kafka")) {
           if (node.id.includes("incoming")) {
             return colors.kafkaIncoming;
@@ -33,6 +38,10 @@
         } else {
           return colors.elasticsearch;
         }
+      })
+      .nodeOpacity(node => {
+        // This will be updated dynamically based on filter mode
+        return 1.0;
       })
       .nodeLabel(node => `${node.id}`)
       .linkLabel(link => `${link.name} - ${link.workers} workers - ${link.status}`)
@@ -51,52 +60,10 @@
       })
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
 
-    // Set up post-processing after graph initialization
-    async function setupPostProcessing() {
-      // Check if THREE is available
-      if (typeof THREE === 'undefined') {
-        console.warn('THREE.js not loaded yet, retrying...');
-        setTimeout(setupPostProcessing, 100);
-        return;
-      }
-      
-      try {
-        // Dynamically import the post-processing modules
-        const { EffectComposer } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/EffectComposer.js');
-        const { RenderPass } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/RenderPass.js');
-        const { OutlinePass } = await import('https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/OutlinePass.js');
-        
-        const scene = Graph.scene();
-        const camera = Graph.camera();
-        const renderer = Graph.renderer();
-        
-        // Create composer manually since we need to use the imported classes
-        const composer = new EffectComposer(renderer);
-        const renderPass = new RenderPass(scene, camera);
-        composer.addPass(renderPass);
-        
-        outlinePass = new OutlinePass(
-          new THREE.Vector2(window.innerWidth, window.innerHeight),
-          scene,
-          camera
-        );
-        
-        // Configure outline appearance
-        outlinePass.edgeStrength = 3.0;
-        outlinePass.edgeGlow = 0.5;
-        outlinePass.edgeThickness = 1.0;
-        outlinePass.visibleEdgeColor.set('#00ffff'); // cyan
-        outlinePass.hiddenEdgeColor.set('#0000ff'); // blue
-        
-        composer.addPass(outlinePass);
-        
-        // Replace the graph's composer with our custom one
-        Graph.postProcessingComposer(composer);
-        
-        console.log('Post-processing setup complete');
-      } catch (error) {
-        console.error('Failed to load post-processing modules:', error);
-      }
+    // Since OutlinePass is complex to set up, let's implement a simpler highlight approach
+    // We'll change node colors/opacity to highlight matches instead of using post-processing
+    function setupHighlighting() {
+      console.log('Highlighting setup complete - using color-based highlighting');
     }
 
     // Initialize lil-gui controls
@@ -162,10 +129,10 @@
         originalData = await fetch('/pipeline_graph').then(r => r.json());
         Graph.graphData(originalData);
         
-        // Set up post-processing after graph is loaded
+        // Set up highlighting after graph is loaded
         setTimeout(() => {
-          setupPostProcessing();
-        }, 500);
+          setupHighlighting();
+        }, 100);
       } catch (error) {
         console.error('Error loading graph data:', error);
       }
@@ -184,13 +151,23 @@
 
     // Original remove-based filtering
     function filterGraphDataRemove(nodeSearchTerm = '', linkSearchTerm = '') {
-      // Clear any outline highlighting
-      if (outlinePass) {
-        outlinePass.selectedObjects = [];
-      }
+      // Clear any highlighting
+      highlightedNodes.clear();
       
       if (!nodeSearchTerm && !linkSearchTerm) {
         Graph.graphData(originalData);
+        // Reset to normal appearance
+        Graph.nodeColor(node => {
+          if (node.id.startsWith("kafka")) {
+            if (node.id.includes("incoming")) {
+              return colors.kafkaIncoming;
+            }
+            return colors.kafkaOther;
+          } else {
+            return colors.elasticsearch;
+          }
+        })
+        .nodeOpacity(1.0);
         return;
       }
 
@@ -236,26 +213,35 @@
       Graph.graphData({ nodes: filteredNodes, links: filteredLinks });
     }
 
-    // New highlight-based filtering using OutlinePass
+    // New highlight-based filtering using color/opacity changes
     function filterGraphDataHighlight(nodeSearchTerm = '', linkSearchTerm = '') {
       // Always show all data in highlight mode
       Graph.graphData(originalData);
       
-      if (!outlinePass) return;
+      // Clear previous highlighting
+      highlightedNodes.clear();
       
       if (!nodeSearchTerm && !linkSearchTerm) {
-        outlinePass.selectedObjects = [];
+        // Reset to normal appearance
+        Graph.nodeColor(node => {
+          if (node.id.startsWith("kafka")) {
+            if (node.id.includes("incoming")) {
+              return colors.kafkaIncoming;
+            }
+            return colors.kafkaOther;
+          } else {
+            return colors.elasticsearch;
+          }
+        })
+        .nodeOpacity(1.0);
         return;
       }
 
-      // Find matching nodes and their corresponding 3D objects
-      const matchingNodeIds = new Set();
-      
-      // Filter nodes if node search term is provided
+      // Find matching nodes
       if (nodeSearchTerm) {
         originalData.nodes.forEach(node => {
           if (node.id.toLowerCase().includes(nodeSearchTerm.toLowerCase())) {
-            matchingNodeIds.add(node.id);
+            highlightedNodes.add(node.id);
           }
         });
       }
@@ -269,25 +255,30 @@
         matchingLinks.forEach(link => {
           const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
           const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-          matchingNodeIds.add(sourceId);
-          matchingNodeIds.add(targetId);
+          highlightedNodes.add(sourceId);
+          highlightedNodes.add(targetId);
         });
       }
       
-      // Get 3D objects for matching nodes
-      const selectedObjects = [];
-      const scene = Graph.scene();
-      
-      scene.traverse((object) => {
-        if (object.userData && object.userData.__graphObjType === 'node') {
-          const nodeData = object.userData.__data;
-          if (nodeData && matchingNodeIds.has(nodeData.id)) {
-            selectedObjects.push(object);
-          }
+      // Update node appearance for highlighting
+      Graph.nodeColor(node => {
+        if (highlightedNodes.has(node.id)) {
+          return '#ff00ff'; // Bright magenta for highlighted nodes
         }
+        
+        // Normal coloring
+        if (node.id.startsWith("kafka")) {
+          if (node.id.includes("incoming")) {
+            return colors.kafkaIncoming;
+          }
+          return colors.kafkaOther;
+        } else {
+          return colors.elasticsearch;
+        }
+      })
+      .nodeOpacity(node => {
+        return highlightedNodes.has(node.id) ? 1.0 : 0.3;
       });
-      
-      outlinePass.selectedObjects = selectedObjects;
     }
 
     // Load data when page loads
