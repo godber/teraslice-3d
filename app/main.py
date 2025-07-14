@@ -1,5 +1,6 @@
 import logging
 import os
+import pprint
 import ssl
 
 import httpx
@@ -69,25 +70,29 @@ async def get_pipeline_graph():
     nodes = []
     links = []    # {'source': '', 'target': ''}
     for job in r:
-        logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
+        try:
+            logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
 
-        job_info = JobInfo(job, logger)
+            job_info = JobInfo(job, logger)
 
-        nodes.append(job_info.source)
+            nodes.append(job_info.source)
 
-        for destination in job_info.destinations:
-            nodes.append(destination)
-            links.append(
-                {
-                    'source': job_info.source.id,
-                    'target': destination.id,
-                    'job_id': job['job_id'],
-                    'name': job['name'],
-                    'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
-                    'workers': job['workers'],
-                    'status': job['ex']['_status']
-                }
-            )
+            for destination in job_info.destinations:
+                nodes.append(destination)
+                links.append(
+                    {
+                        'source': job_info.source.id,
+                        'target': destination.id,
+                        'job_id': job['job_id'],
+                        'name': job['name'],
+                        'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
+                        'workers': job['workers'],
+                        'status': job['ex']['_status']
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error processing job: {e}\nJob: {pprint.pformat(job)}")
+            raise e
 
     return {
         'nodes': list(set(nodes)),

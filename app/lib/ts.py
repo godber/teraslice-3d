@@ -3,7 +3,7 @@ from typing import Literal
 
 class StorageNode(BaseModel):
     id: str
-    connector_type: Literal['KAFKA', 'ES']
+    connector_type: Literal['KAFKA', 'ES', 'DATA_GENERATOR']
 
     # we make this object hashable so that we can deduplicate a list of them later
     def __hash__(self):
@@ -45,6 +45,12 @@ class JobInfo:
                 # if connection is not specified, Teraslice assumes 'default'
                 id=f"{op.get('connection', 'default')}:{op['topic']}",
                 connector_type='KAFKA'
+            )
+        elif op['_op'] == 'data_generator':
+            # source_node -> data_generator
+            source = StorageNode(
+                id=f"data_generator",
+                connector_type='DATA_GENERATOR'
             )
         else:
             self.logger.warning('MISSING SOURCE')
