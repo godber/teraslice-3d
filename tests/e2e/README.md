@@ -1,189 +1,104 @@
-# End-to-End Tests with Playwright
+# End-to-End Tests for Teraslice 3D
 
-This directory contains end-to-end tests for the Teraslice 3D visualization application using Playwright.
+This directory contains **simplified** end-to-end tests for the Teraslice 3D visualization application using Playwright.
 
-## Setup
+## Overview
 
-1. **Install Dependencies**
-   ```bash
-   uv sync --group e2e
-   ```
-
-2. **Install Playwright Browsers**
-   ```bash
-   uv run playwright install chromium
-   ```
-
-3. **Make Test Script Executable**
-   ```bash
-   chmod +x scripts/run-e2e-tests.sh
-   ```
-
-## Running Tests
-
-### Quick Start
-```bash
-./scripts/run-e2e-tests.sh
-```
-
-### Manual Test Execution
-```bash
-# Run all e2e tests
-uv run pytest tests/e2e/ -v
-
-# Run specific test file
-uv run pytest tests/e2e/test_graph_ui.py -v
-
-# Run specific test
-uv run pytest tests/e2e/test_graph_ui.py::TestGraphUI::test_homepage_loads -v
-```
+These tests verify that the 3D graph visualization **loads without error** and captures screenshots for visual verification.
 
 ## Test Structure
 
+### Test Files
+
+- `test_graph_ui.py`: Simplified tests for the 3D graph user interface
+- `conftest.py`: Shared test fixtures and configuration
+- `playwright.config.py`: Playwright browser configuration  
+- `pytest.ini`: Pytest configuration for e2e tests
+
+### What the Tests Do
+
+1. **Start the actual FastAPI server** on a free port
+2. **Mock only the external HTTP call** to the Teraslice API
+3. **Load the real page** from the FastAPI server
+4. **Verify the page loads** without JavaScript errors
+5. **Take screenshots** for visual verification
+6. **Test both with data and empty data** scenarios
+
+## Running the Tests
+
+### Quick Start
+
+```bash
+# From the project root directory
+./scripts/run-e2e-tests.sh
 ```
-tests/e2e/
-├── conftest.py              # Pytest fixtures and configuration
-├── playwright.config.py     # Playwright configuration
-├── test_graph_ui.py         # UI component tests
-├── test_api_endpoints.py    # API endpoint tests
-├── screenshots/             # Test screenshots (auto-generated)
-└── README.md               # This file
+
+### Manual Setup
+
+```bash
+# Install dependencies
+uv sync --group e2e
+
+# Install Playwright browsers
+uv run playwright install chromium
+
+# Create screenshots directory
+mkdir -p tests/e2e/screenshots
+
+# Run the tests
+uv run pytest tests/e2e/ -v
 ```
 
-## Test Coverage
+## Test Environment
 
-### UI Tests (`test_graph_ui.py`)
-- **Homepage Loading**: Verifies main page loads and displays 3D graph container
-- **Graph Rendering**: Tests graph rendering with mock job data
-- **Responsive Design**: Tests UI at different viewport sizes (desktop, laptop, tablet)
-- **Error Handling**: Tests behavior when API calls fail
-- **Color Coding**: Verifies node color coding (yellow for incoming Kafka, blue for Kafka, green for ES)
+### Dependencies
 
-### API Tests (`test_api_endpoints.py`)
-- **Jobs Endpoint**: Tests `/jobs` endpoint with mock data
-- **Pipeline Graph Endpoint**: Tests `/pipeline_graph` endpoint transformation
-- **Error Handling**: Tests API error scenarios
-- **Large Dataset**: Tests performance with large datasets (20+ jobs)
+- Python 3.13+
+- Playwright
+- pytest-playwright
+- Mock data fixtures
+
+### Mock Data
+
+Tests use mock Teraslice job data defined in `tests/fixtures/teraslice_jobs.py`:
+- `kafka_reader_to_elasticsearch_job()`: Basic Kafka to Elasticsearch job
+- `kafka_reader_to_kafka_sender_job()`: Kafka transformation job
 
 ## Screenshots
 
-All tests automatically capture screenshots saved to `tests/e2e/screenshots/`:
+Screenshots are saved to `tests/e2e/screenshots/`:
+- `page_loaded.png`: Main page with mock data
+- `empty_data.png`: Page with no jobs
 
-- `homepage_loaded.png` - Main page after loading
-- `graph_with_mock_data.png` - Graph rendering with test data
-- `responsive_desktop.png` - Desktop viewport (1920x1080)
-- `responsive_laptop.png` - Laptop viewport (1280x720)
-- `responsive_tablet.png` - Tablet viewport (768x1024)
-- `graph_error_state.png` - Error handling display
-- `graph_color_coding.png` - Node color coding verification
-- `jobs_api_response.png` - Jobs API response display
-- `pipeline_graph_api_response.png` - Pipeline graph API response
-- `api_error_response.png` - API error handling
-- `large_dataset_performance.png` - Large dataset performance test
+## Key Improvements
 
-## Mock Data
-
-Tests use the existing fixture data from `tests/fixtures/teraslice_jobs.py`:
-
-- Simple jobs (kafka → elasticsearch, kafka → kafka)
-- Complex routing jobs (routed_sender with multiple destinations)
-- Edge cases (empty operations, unknown sources/destinations)
-- Large datasets (20+ jobs for performance testing)
-
-## Configuration
-
-### Playwright Settings
-- **Browser**: Chromium (headless)
-- **Viewport**: 1280x720 (configurable)
-- **Timeout**: 30 seconds
-- **Screenshots**: On failure + manual captures
-
-### Test Environment
-- **Mock Mode**: Tests use mock data to avoid external dependencies
-- **Isolated**: Each test runs in a fresh browser context
-- **Fast**: No real server startup required
-
-## Extending Tests
-
-### Adding New Tests
-1. Create test methods in existing test classes
-2. Use the provided fixtures for mock data
-3. Add screenshot captures for visual verification
-4. Update this README with new test descriptions
-
-### Custom Mock Data
-```python
-@pytest.fixture
-def custom_mock_jobs():
-    return [
-        {
-            "job_id": "custom-001",
-            "name": "custom-pipeline",
-            "workers": 5,
-            "ex": {"_status": "running"},
-            "operations": [
-                {"_op": "kafka_reader", "topic": "input"},
-                {"_op": "elasticsearch_bulk", "index": "output"}
-            ]
-        }
-    ]
-```
-
-### Cross-Browser Testing
-To enable Firefox and WebKit testing, modify `playwright.config.py`:
-```python
-BROWSERS = ["chromium", "firefox", "webkit"]
-```
-
-## CI/CD Integration
-
-Tests are designed to run in CI environments:
-
-```yaml
-# Example GitHub Actions step
-- name: Run E2E Tests
-  run: |
-    uv sync --group e2e
-    uv run playwright install chromium
-    uv run pytest tests/e2e/ -v
-    
-- name: Upload Screenshots
-  uses: actions/upload-artifact@v3
-  if: always()
-  with:
-    name: playwright-screenshots
-    path: tests/e2e/screenshots/
-```
+This simplified approach:
+- **Tests the actual FastAPI application** instead of mock HTML
+- **Removes 380+ lines** of complex test code
+- **Only mocks external dependencies** (Teraslice API calls)
+- **Provides real screenshots** of the actual application
+- **Detects JavaScript errors** during page load
+- **Is much faster and more reliable**
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Browser Not Found**
+1. **Browser Installation**: 
    ```bash
-   # Solution: Install browsers
-   uv run playwright install
+   uv run playwright install chromium
    ```
 
-2. **Screenshot Directory Missing**
-   ```bash
-   # Solution: Create directory
-   mkdir -p tests/e2e/screenshots
-   ```
+2. **Port Conflicts**: The test uses dynamic port allocation to avoid conflicts
 
-3. **Test Timeouts**
-   - Increase timeout in `playwright.config.py`
-   - Check for JavaScript errors in browser console
-
-4. **Mock Data Issues**
-   - Verify fixture data in `tests/fixtures/teraslice_jobs.py`
-   - Check JSON serialization in test files
+3. **Screenshot Permissions**: Ensure `tests/e2e/screenshots/` directory is writable
 
 ### Debug Mode
-```bash
-# Run with debug output
-uv run pytest tests/e2e/ -v -s --tb=long
 
-# Run single test with detailed output
-uv run pytest tests/e2e/test_graph_ui.py::TestGraphUI::test_homepage_loads -v -s
+```bash
+# Run with visible browser
+uv run pytest tests/e2e/ --headed
+
+# Run with verbose output
+uv run pytest tests/e2e/ -v -s
 ```
