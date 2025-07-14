@@ -5,6 +5,9 @@
   <script src="/static/3d-force-graph.js"></script>
   <script type="module">
     import { GUI } from '/static/lil-gui.esm.js';
+    import { EffectComposer } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/RenderPass.js';
+    import { OutlinePass } from 'https://unpkg.com/three@0.168.0/examples/jsm/postprocessing/OutlinePass.js';
 
     const elem = document.getElementById('3d-graph');
 
@@ -17,6 +20,9 @@
 
     // Store original graph data for filtering
     let originalData = null;
+    
+    // Post-processing setup
+    let outlinePass = null;
 
     // Initialize graph without data first
     const Graph = new ForceGraph3D(elem)
@@ -47,6 +53,29 @@
       })
       .onLinkClick(link => window.open(`${link.url}`, '_blank'))
 
+    // Set up post-processing after graph initialization
+    function setupPostProcessing() {
+      const composer = Graph.postProcessingComposer();
+      const scene = Graph.scene();
+      const camera = Graph.camera();
+      const renderer = Graph.renderer();
+      
+      outlinePass = new OutlinePass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        scene,
+        camera
+      );
+      
+      // Configure outline appearance
+      outlinePass.edgeStrength = 3.0;
+      outlinePass.edgeGlow = 0.5;
+      outlinePass.edgeThickness = 1.0;
+      outlinePass.visibleEdgeColor.set('#00ffff'); // cyan
+      outlinePass.hiddenEdgeColor.set('#0000ff'); // blue
+      
+      composer.addPass(outlinePass);
+    }
+
     // Initialize lil-gui controls
     const gui = new GUI({title: "Teraslice 3D Graph Controls"});
     const colorFolder = gui.addFolder('Node Colors');
@@ -75,8 +104,14 @@
     const filterFolder = gui.addFolder('Filtering');
     const filterState = { 
       nodeSearchTerm: '',
-      linkSearchTerm: ''
+      linkSearchTerm: '',
+      filterMode: 'Remove'
     };
+    
+    // Add filter mode dropdown
+    const filterModeController = filterFolder.add(filterState, 'filterMode', ['Remove', 'Highlight']).name('Filter Mode').onChange(value => {
+      filterGraphData(filterState.nodeSearchTerm, filterState.linkSearchTerm);
+    });
 
     const nodeSearchController = filterFolder.add(filterState, 'nodeSearchTerm').name('Search Nodes').onChange(value => {
       filterGraphData(value, filterState.linkSearchTerm);
@@ -103,6 +138,11 @@
       try {
         originalData = await fetch('/pipeline_graph').then(r => r.json());
         Graph.graphData(originalData);
+        
+        // Set up post-processing after graph is loaded
+        setTimeout(() => {
+          setupPostProcessing();
+        }, 100);
       } catch (error) {
         console.error('Error loading graph data:', error);
       }
@@ -111,6 +151,20 @@
     // Filter function for graph data
     function filterGraphData(nodeSearchTerm = '', linkSearchTerm = '') {
       if (!originalData) return;
+      
+      if (filterState.filterMode === 'Highlight') {
+        filterGraphDataHighlight(nodeSearchTerm, linkSearchTerm);
+      } else {
+        filterGraphDataRemove(nodeSearchTerm, linkSearchTerm);
+      }
+    }
+
+    // Original remove-based filtering
+    function filterGraphDataRemove(nodeSearchTerm = '', linkSearchTerm = '') {
+      // Clear any outline highlighting
+      if (outlinePass) {
+        outlinePass.selectedObjects = [];
+      }
       
       if (!nodeSearchTerm && !linkSearchTerm) {
         Graph.graphData(originalData);
@@ -157,6 +211,60 @@
       }
 
       Graph.graphData({ nodes: filteredNodes, links: filteredLinks });
+    }
+
+    // New highlight-based filtering using OutlinePass
+    function filterGraphDataHighlight(nodeSearchTerm = '', linkSearchTerm = '') {
+      // Always show all data in highlight mode
+      Graph.graphData(originalData);
+      
+      if (!outlinePass) return;
+      
+      if (!nodeSearchTerm && !linkSearchTerm) {
+        outlinePass.selectedObjects = [];
+        return;
+      }
+
+      // Find matching nodes and their corresponding 3D objects
+      const matchingNodeIds = new Set();
+      
+      // Filter nodes if node search term is provided
+      if (nodeSearchTerm) {
+        originalData.nodes.forEach(node => {
+          if (node.id.toLowerCase().includes(nodeSearchTerm.toLowerCase())) {
+            matchingNodeIds.add(node.id);
+          }
+        });
+      }
+      
+      // Filter by links and include connected nodes
+      if (linkSearchTerm) {
+        const matchingLinks = originalData.links.filter(link =>
+          link.name.toLowerCase().includes(linkSearchTerm.toLowerCase())
+        );
+        
+        matchingLinks.forEach(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          matchingNodeIds.add(sourceId);
+          matchingNodeIds.add(targetId);
+        });
+      }
+      
+      // Get 3D objects for matching nodes
+      const selectedObjects = [];
+      const scene = Graph.scene();
+      
+      scene.traverse((object) => {
+        if (object.userData && object.userData.__graphObjType === 'node') {
+          const nodeData = object.userData.__data;
+          if (nodeData && matchingNodeIds.has(nodeData.id)) {
+            selectedObjects.push(object);
+          }
+        }
+      });
+      
+      outlinePass.selectedObjects = selectedObjects;
     }
 
     // Load data when page loads
