@@ -1,2 +1,7 @@
 __pycache__
 .venv
+node_modules
+frontend/dist
+*.pyc
+*.pyo
+*.pyd

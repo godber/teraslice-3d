@@ -6,10 +6,8 @@ import ssl
 import httpx
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
 
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,14 +28,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
-@app.get("/", response_class=HTMLResponse)
-async def get_graph_page(request: Request):
-    return templates.TemplateResponse("graph.html", {"request": request})
-
-@app.get("/jobs", response_class=JSONResponse)
+@app.get("/api/jobs", response_class=JSONResponse)
 async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None | str = '_status'):
     url = settings.teraslice_url
 
@@ -60,7 +52,7 @@ async def get_jobs(size: None | int = 500, active: None | str = 'true', ex: None
 
     return r.json()
 
-@app.get("/pipeline_graph", response_class=JSONResponse)
+@app.get("/api/pipeline_graph", response_class=JSONResponse)
 async def get_pipeline_graph():
     # TODO: The size here is hard coded to an arbitrarily large number to try
     # and get all of the jobs, this is dumb but the Teraslice API doesn't tell
@@ -98,3 +90,5 @@ async def get_pipeline_graph():
         'nodes': list(set(nodes)),
         'links': links
     }
+
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")

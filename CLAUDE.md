@@ -6,6 +6,12 @@ code in this repository.
 ## Instructions for Claude Code
 
 * Always do your work on git a branch and submit a PR.
+* When you are done editing files and before you commit changes you should:
+  * Always run backend Python tests
+    * `uv add --group test pytest pytest-asyncio && uv run pytest`
+  * Always do a test build of the frontend
+    * `cd frontend && npm install && npm build && cd -`
+  * Fix any errors or failures you encounter.
 
 ## Project Overview
 
@@ -28,6 +34,27 @@ LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi de
 # With custom CA certificate
 TERASLICE_URL="https://teraslice.example.com" CACERT_FILE="/path/to/ca.pem" uv run fastapi dev
 ```
+
+### Frontend Development
+
+The frontend has been restructured into a modern Vite-based project:
+
+```bash
+# Install frontend dependencies
+cd frontend && npm install
+
+# Development server with HMR (runs on http://localhost:5173)
+cd frontend && npm run dev
+
+# Production build
+cd frontend && npm run build
+
+# Preview production build
+cd frontend && npm run preview
+```
+
+During development, the frontend proxies to the backend so the backend must also
+be running.
 
 ### Docker Development
 
@@ -62,7 +89,7 @@ Uses `uv` for Python package management. Dependencies are defined in `pyproject.
 - **Static File Serving**: FastAPI serves static assets from `/static` directory
   and templates from `/templates`
 
-The frontend fetches graph data from `/pipeline_graph` endpoint and uses the
+The frontend fetches graph data from `/api/pipeline_graph` endpoint and uses the
 ForceGraph3D library to render:
 
 - **Node colors**: Yellow for "incoming" Kafka topics, blue for other Kafka
@@ -74,9 +101,10 @@ ForceGraph3D library to render:
 ### Key Endpoints
 
 - `/` - Serves the 3D visualization interface
-- `/jobs` - Proxies Teraslice job data with filtering
-- `/pipeline_graph` - Transforms job data into graph format (nodes/links) for
+- `/api/jobs` - Proxies Teraslice job data with filtering
+- `/api/pipeline_graph` - Transforms job data into graph format (nodes/links) for
   visualization
+- `/api/graph` - Legacy template route for backward compatibility
 
 ### Data Flow Processing
 
@@ -101,4 +129,4 @@ Environment variables:
 
 - Assumes Kafka connectors are named beginning with "kafka"
 - Special handling for connectors/topics containing "incoming"
-- Hard-coded job size limit of 500 for API calls
+- Hard-coded job size limit of 500 for Teraslice API calls
