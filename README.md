@@ -17,11 +17,45 @@ internal naming conventions that not everyone may follow.
 
 ## Development
 
+### Backend Development
+
 ```bash
 TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run fastapi dev
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 ```
+
+### Frontend Development
+
+The frontend has been restructured into a modern Vite-based project with modular JavaScript components:
+
+```bash
+# Install frontend dependencies
+cd frontend && npm install
+
+# Development server with Hot Module Replacement (runs on http://localhost:5173)
+cd frontend && npm run dev
+
+# Production build
+cd frontend && npm run build
+
+# Preview production build
+cd frontend && npm run preview
+```
+
+**Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`npm run dev`) servers simultaneously.
+
+### Architecture
+
+The application now uses a modern frontend architecture:
+- **Frontend**: Vite-based build system with ES modules
+- **Backend**: FastAPI serving API endpoints under `/api/` prefix
+- **Static Assets**: Frontend build artifacts served from `/frontend/dist/`
+
+#### Key API Endpoints:
+- `/` - Serves the 3D visualization interface
+- `/api/jobs` - Proxies Teraslice job data with filtering
+- `/api/pipeline_graph` - Transforms job data into graph format for visualization
 
 ### Docker
 
@@ -61,14 +95,13 @@ docker run \
 
 ### Testing
 
+#### Backend Tests
+
 Run the unit tests to validate job parsing logic:
 
 ```bash
-# Install test dependencies
-uv add --group test pytest pytest-asyncio
-
-# Run all tests
-uv run pytest
+# Install test dependencies and run tests
+uv add --group test pytest pytest-asyncio && uv run pytest
 
 # Run with verbose output
 uv run pytest -v
@@ -76,3 +109,14 @@ uv run pytest -v
 # Run only unit tests
 uv run pytest tests/unit/ -v
 ```
+
+#### Frontend Tests
+
+Validate the frontend build process:
+
+```bash
+# Install dependencies and build
+cd frontend && npm install && npm run build
+```
+
+The frontend build generates optimized production assets in `frontend/dist/` that are served by the FastAPI application.
