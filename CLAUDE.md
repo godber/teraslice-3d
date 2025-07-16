@@ -10,7 +10,7 @@ code in this repository.
   * Always run backend Python tests
     * `uv add --group test pytest pytest-asyncio && uv run pytest`
   * Always do a test build of the frontend
-    * `cd frontend && npm install && npm build && cd -`
+    * `cd frontend && npm install && npm run build && cd -`
   * Fix any errors or failures you encounter.
 
 ## Project Overview
