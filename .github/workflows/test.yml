@@ -23,7 +23,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd frontend && npm run build && cd ..
+        cd frontend && npm install && npm build && cd -
         uv sync --group test
 
     - name: Run tests
