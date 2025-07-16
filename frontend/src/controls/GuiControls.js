@@ -2,10 +2,13 @@ import { GUI } from 'lil-gui';
 import { colors } from '../graph/GraphColors.js';
 
 export class GuiControls {
-  constructor(graphRenderer, graphFilters) {
+  constructor(graphRenderer, graphFilters, autoRefresh) {
     this.graphRenderer = graphRenderer;
     this.graphFilters = graphFilters;
+    this.autoRefresh = autoRefresh;
     this.gui = null;
+    this.connectionStatus = 'unknown';
+    this.lastUpdateTime = null;
     this.init();
   }
 
@@ -14,6 +17,16 @@ export class GuiControls {
     this.setupFilterControls();
     this.setupColorControls();
     this.setupHighlightControls();
+    this.setupAutoRefreshControls();
+
+    // Setup auto-refresh status monitoring
+    if (this.autoRefresh) {
+      this.autoRefresh.onStatusChange((status, lastUpdateTime) => {
+        this.connectionStatus = status;
+        this.lastUpdateTime = lastUpdateTime;
+        this.updateConnectionStatus();
+      });
+    }
   }
 
   setupColorControls() {
@@ -65,7 +78,7 @@ export class GuiControls {
 
   setupHighlightControls() {
     const highlightFolder = this.gui.addFolder('Highlight Settings');
-    
+
     // Create settings object with current OutlinePass values
     const highlightSettings = {
       edgeStrength: 3.0,
@@ -128,17 +141,128 @@ export class GuiControls {
     highlightFolder.close(); // Start collapsed
   }
 
+  setupAutoRefreshControls() {
+    const refreshFolder = this.gui.addFolder('Auto Refresh');
+
+    if (!this.autoRefresh) {
+      refreshFolder.add({}, 'disabled').name('Auto-refresh not available');
+      return;
+    }
+
+    const refreshState = {
+      enabled: this.autoRefresh.getStatus().enabled,
+      interval: this.autoRefresh.getStatus().interval / 1000, // Convert to seconds
+      status: 'unknown',
+      lastUpdate: 'Never'
+    };
+
+    // Enable/disable toggle
+    refreshFolder.add(refreshState, 'enabled')
+      .name('Enable Auto-refresh')
+      .onChange(value => {
+        if (value) {
+          this.autoRefresh.start();
+        } else {
+          this.autoRefresh.stop();
+        }
+      });
+
+    // Interval control
+    refreshFolder.add(refreshState, 'interval', 10, 300, 10)
+      .name('Interval (seconds)')
+      .onChange(value => {
+        this.autoRefresh.setInterval(value * 1000);
+      });
+
+    // Status display
+    this.statusController = refreshFolder.add(refreshState, 'status')
+      .name('Connection Status')
+      .listen();
+
+    this.lastUpdateController = refreshFolder.add(refreshState, 'lastUpdate')
+      .name('Last Update')
+      .listen();
+
+    // Manual refresh button
+    refreshFolder.add({
+      refresh: () => {
+        this.autoRefresh.refresh();
+      }
+    }, 'refresh').name('Refresh Now');
+
+    // Clear cache button
+    refreshFolder.add({
+      clearCache: async () => {
+        await this.clearCache();
+      }
+    }, 'clearCache').name('Clear Cache');
+
+    // Store reference for updates
+    this.refreshState = refreshState;
+
+    refreshFolder.close();
+  }
+
+  updateConnectionStatus() {
+    if (!this.refreshState) return;
+
+    this.refreshState.status = this.connectionStatus;
+    this.refreshState.lastUpdate = this.lastUpdateTime
+      ? this.lastUpdateTime.toLocaleTimeString()
+      : 'Never';
+
+    // Update GUI display
+    if (this.statusController) {
+      this.statusController.updateDisplay();
+    }
+    if (this.lastUpdateController) {
+      this.lastUpdateController.updateDisplay();
+    }
+  }
+
+  async clearCache() {
+    try {
+      const response = await fetch('/api/cache/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to clear cache: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Cache cleared:', result.message);
+      
+      // Optionally trigger a refresh after clearing cache
+      if (this.autoRefresh) {
+        await this.autoRefresh.refresh();
+      }
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      // Could add user notification here
+    }
+  }
+
   updateAllHighlightControls(settings) {
     // Update the renderer
     this.graphRenderer.updateOutlineSettings(settings);
-    
+
     // Update all GUI controllers to reflect the new values
     this.gui.controllersRecursive().forEach(controller => {
-      if (controller.property === 'edgeStrength' || 
-          controller.property === 'edgeGlow' || 
+      if (controller.property === 'edgeStrength' ||
+          controller.property === 'edgeGlow' ||
           controller.property === 'edgeThickness') {
         controller.updateDisplay();
       }
     });
+  }
+
+  destroy() {
+    if (this.gui) {
+      this.gui.destroy();
+    }
   }
 }

@@ -23,7 +23,7 @@ export class GraphRenderer {
       })
       .linkColor(getLinkColor)
       .onLinkClick(link => window.open(`${link.url}`, '_blank'));
-    
+
     // Setup outline pass after graph initialization
     setTimeout(() => this.setupOutlinePass(), 100);
   }
@@ -40,6 +40,67 @@ export class GraphRenderer {
     this.graph.graphData(data);
   }
 
+  /**
+   * Update the graph data with new data.
+   * This method checks if the new data is different from the current data
+   * before updating to avoid unnecessary re-renders.
+   * @param {Object} newData - The new graph data to update.
+   */
+  updateData(newData) {
+    // Only update if the data has actually changed
+    const currentData = this.graph.graphData();
+    if (this.hasDataChanged(currentData, newData)) {
+      this.graph.graphData(newData);
+      console.log('Graph data updated');
+    }
+  }
+
+  /**
+   * Check if the graph data has changed by comparing current and new data.
+   * @param {*} currentData - The current graph data.
+   * @param {*} newData - The new graph data to compare against.
+   * @returns {boolean} - True if the data has changed, false otherwise.
+   */
+  hasDataChanged(currentData, newData) {
+    // Simple comparison of data structure
+    if (!currentData || !newData) return true;
+
+    // Compare node and link counts
+    if (currentData.nodes?.length !== newData.nodes?.length) return true;
+    if (currentData.links?.length !== newData.links?.length) return true;
+
+    // Compare node IDs
+    const currentNodeIds = new Set(currentData.nodes?.map(n => n.id) || []);
+    const newNodeIds = new Set(newData.nodes?.map(n => n.id) || []);
+    if (currentNodeIds.size !== newNodeIds.size) return true;
+    for (let id of newNodeIds) {
+      if (!currentNodeIds.has(id)) return true;
+    }
+
+    // Compare link properties
+    const currentLinks = currentData.links || [];
+    const newLinks = newData.links || [];
+    for (let i = 0; i < newLinks.length; i++) {
+      const currentLink = currentLinks[i];
+      const newLink = newLinks[i];
+      if (!currentLink ||
+          currentLink.source !== newLink.source ||
+          currentLink.target !== newLink.target ||
+          currentLink.status !== newLink.status ||
+          currentLink.workers !== newLink.workers) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Setup the outline pass for the graph.
+   * This method initializes the OutlinePass and adds it to the existing
+   * post-processing composer of the 3D Force Graph.
+   * It also handles resizing the outline pass when the window is resized.
+   */
   setupOutlinePass() {
     try {
       const renderer = this.graph.renderer();
@@ -54,7 +115,7 @@ export class GraphRenderer {
 
       // Get the existing composer from 3D Force Graph
       const composer = this.graph.postProcessingComposer();
-      
+
       if (!composer) {
         console.error('No postProcessingComposer found from 3D Force Graph');
         return;
@@ -66,7 +127,7 @@ export class GraphRenderer {
 
       // Create outline pass
       this.outlinePass = new OutlinePass(size, scene, camera);
-      
+
       // Configure outline appearance
       this.outlinePass.edgeStrength = 3.0;
       this.outlinePass.edgeGlow = 0.7;
@@ -98,7 +159,7 @@ export class GraphRenderer {
       console.warn('OutlinePass not initialized');
       return;
     }
-    
+
     this.outlinePass.selectedObjects = objects || [];
   }
 
@@ -112,7 +173,7 @@ export class GraphRenderer {
 
   updateOutlineSettings(settings) {
     if (!this.outlinePass) return;
-    
+
     if (settings.edgeStrength !== undefined) {
       this.outlinePass.edgeStrength = settings.edgeStrength;
     }

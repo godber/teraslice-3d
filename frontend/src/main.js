@@ -2,6 +2,7 @@ import { GraphRenderer } from './graph/GraphRenderer.js';
 import { GraphFilters } from './graph/GraphFilters.js';
 import { GuiControls } from './controls/GuiControls.js';
 import { loadGraphData } from './utils/api.js';
+import { AutoRefresh } from './utils/autoRefresh.js';
 import './style.css';
 
 async function initializeApp() {
@@ -15,8 +16,14 @@ async function initializeApp() {
   graphFilters.setGraph(graphRenderer.getGraph());
   graphFilters.setGraphRenderer(graphRenderer);
   
-  // Initialize GUI controls
-  const guiControls = new GuiControls(graphRenderer, graphFilters);
+  // Initialize auto-refresh
+  const autoRefresh = new AutoRefresh((newData) => {
+    graphFilters.setOriginalData(newData);
+    graphRenderer.updateData(newData);
+  });
+  
+  // Initialize GUI controls with auto-refresh
+  const guiControls = new GuiControls(graphRenderer, graphFilters, autoRefresh);
   
   // Load and display graph data
   try {
