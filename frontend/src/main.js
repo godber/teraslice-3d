@@ -13,6 +13,7 @@ async function initializeApp() {
   
   // Connect filters to graph
   graphFilters.setGraph(graphRenderer.getGraph());
+  graphFilters.setGraphRenderer(graphRenderer);
   
   // Initialize GUI controls
   const guiControls = new GuiControls(graphRenderer, graphFilters);

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run pytest:*)"
+    ],
+    "deny": []
+  }
+}
