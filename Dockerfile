@@ -13,16 +13,16 @@ FROM python:3.12-slim AS runtime
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy Python application files
-COPY pyproject.toml uv.lock ./
-COPY app/ ./app/
-COPY templates/ ./templates/
-COPY static/ ./static/
+COPY backend/pyproject.toml backend/uv.lock ./backend/
+COPY backend/app/ ./backend/app/
 
 # Install Python dependencies
+WORKDIR /backend
 RUN uv sync --frozen --no-cache --no-dev
 
 # Copy built frontend assets from build stage
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /app/frontend/dist /frontend/dist
 
 # Run the application
+# ./.venv/bin/fastapi run app/main.py --port 80 --host 0.0.0.0
 CMD ["./.venv/bin/fastapi", "run", "app/main.py", "--port", "80", "--host", "0.0.0.0"]
