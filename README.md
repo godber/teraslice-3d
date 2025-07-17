@@ -20,6 +20,7 @@ internal naming conventions that not everyone may follow.
 ### Backend Development
 
 ```bash
+cd backend
 TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
 TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run fastapi dev
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
@@ -47,12 +48,12 @@ cd frontend && npm run preview
 
 ### Architecture
 
-The application now uses a modern frontend architecture:
-- **Frontend**: Vite-based build system with ES modules
+- **Frontend**: ThreeJS with Vite-based build system with ES modules
 - **Backend**: FastAPI serving API endpoints under `/api/` prefix
 - **Static Assets**: Frontend build artifacts served from `/frontend/dist/`
 
-#### Key API Endpoints:
+#### Key API Endpoints
+
 - `/` - Serves the 3D visualization interface
 - `/api/jobs` - Proxies Teraslice job data with filtering
 - `/api/pipeline_graph` - Transforms job data into graph format for visualization
@@ -101,13 +102,13 @@ Run the unit tests to validate job parsing logic:
 
 ```bash
 # Install test dependencies and run tests
-uv add --group test pytest pytest-asyncio && uv run pytest
+cd backend && uv add --group test pytest pytest-asyncio && uv run pytest && cd -
 
 # Run with verbose output
-uv run pytest -v
+cd backend && uv run pytest -v
 
 # Run only unit tests
-uv run pytest tests/unit/ -v
+cd backend && uv run pytest tests/unit/ -v
 ```
 
 #### Frontend Tests

@@ -181,4 +181,4 @@ async def clear_cache():
     cache.clear()
     return {"message": "Cache cleared successfully", "status": cache.get_status()}
 
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
