@@ -1,4 +1,13 @@
+import { GraphData, FilterState } from '../types/graph.js';
+import { GraphRenderer } from './GraphRenderer.js';
+import * as THREE from 'three';
+
 export class GraphFilters {
+  private originalData: GraphData | null;
+  private graph: any; // ForceGraph3D instance
+  private graphRenderer: GraphRenderer | null;
+  private filterState: FilterState;
+
   constructor() {
     this.originalData = null;
     this.graph = null;
@@ -9,19 +18,19 @@ export class GraphFilters {
     };
   }
 
-  setOriginalData(data) {
+  public setOriginalData(data: GraphData): void {
     this.originalData = data;
   }
 
-  setGraph(graph) {
+  public setGraph(graph: any): void {
     this.graph = graph;
   }
 
-  setGraphRenderer(graphRenderer) {
+  public setGraphRenderer(graphRenderer: GraphRenderer): void {
     this.graphRenderer = graphRenderer;
   }
 
-  setFilterMode(mode) {
+  public setFilterMode(mode: 'Remove' | 'Highlight'): void {
     this.filterState.filterMode = mode;
     // Clear any existing highlights when switching modes
     if (this.graphRenderer) {
@@ -29,11 +38,11 @@ export class GraphFilters {
     }
   }
 
-  getFilterState() {
+  public getFilterState(): FilterState {
     return this.filterState;
   }
 
-  filterGraphData(searchTerm = '') {
+  public filterGraphData(searchTerm: string = ''): void {
     if (!this.originalData || !this.graph) return;
 
     this.filterState.searchTerm = searchTerm;
@@ -54,16 +63,16 @@ export class GraphFilters {
     }
   }
 
-  applyRemoveMode(searchTerm) {
+  private applyRemoveMode(searchTerm: string): void {
     const searchLower = searchTerm.toLowerCase();
 
     // Find nodes that match the search term
-    const matchingNodes = this.originalData.nodes.filter(node =>
+    const matchingNodes = this.originalData!.nodes.filter(node =>
       node.id.toLowerCase().includes(searchLower)
     );
 
     // Find links that match the search term
-    const matchingLinks = this.originalData.links.filter(link =>
+    const matchingLinks = this.originalData!.links.filter(link =>
       link.name.toLowerCase().includes(searchLower)
     );
 
@@ -79,10 +88,10 @@ export class GraphFilters {
     });
 
     // Get all nodes to display
-    const filteredNodes = this.originalData.nodes.filter(node => nodeIds.has(node.id));
+    const filteredNodes = this.originalData!.nodes.filter(node => nodeIds.has(node.id));
 
     // Get all links between the filtered nodes
-    const filteredLinks = this.originalData.links.filter(link => {
+    const filteredLinks = this.originalData!.links.filter(link => {
       const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
       const targetId = typeof link.target === 'object' ? link.target.id : link.target;
       return nodeIds.has(sourceId) && nodeIds.has(targetId);
@@ -96,9 +105,9 @@ export class GraphFilters {
     }
   }
 
-  applyHighlightMode(searchTerm) {
+  private applyHighlightMode(searchTerm: string): void {
     // Keep all original data visible
-    this.graph.graphData(this.originalData);
+    this.graph.graphData(this.originalData!);
 
     if (!this.graphRenderer) {
       console.warn('GraphRenderer not available for highlight mode');
@@ -108,12 +117,12 @@ export class GraphFilters {
     const searchLower = searchTerm.toLowerCase();
 
     // Find nodes that match the search term
-    const matchingNodes = this.originalData.nodes.filter(node =>
+    const matchingNodes = this.originalData!.nodes.filter(node =>
       node.id.toLowerCase().includes(searchLower)
     );
 
     // Find links that match the search term
-    const matchingLinks = this.originalData.links.filter(link =>
+    const matchingLinks = this.originalData!.links.filter(link =>
       link.name.toLowerCase().includes(searchLower)
     );
 
@@ -129,13 +138,13 @@ export class GraphFilters {
     });
 
     // Find the actual 3D objects in the scene to highlight
-    const objectsToHighlight = [];
+    const objectsToHighlight: THREE.Object3D[] = [];
     const scene = this.graph.scene();
 
     // Collect matching link IDs for highlighting
     const linkIds = new Set(matchingLinks.map(l => l.id || `${l.source}-${l.target}`));
 
-    scene.traverse((child) => {
+    scene.traverse((child: any) => {
       if (child.isMesh) {
         // Highlight matching nodes
         if (child.__graphObjType === 'node' && child.__data && nodeIds.has(child.__data.id)) {
@@ -161,7 +170,7 @@ export class GraphFilters {
     this.graphRenderer.highlightObjects(objectsToHighlight);
   }
 
-  clearFilters() {
+  public clearFilters(): void {
     this.filterState.searchTerm = '';
     this.filterGraphData('');
   }

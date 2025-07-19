@@ -1,17 +1,22 @@
 import ForceGraph3D from '3d-force-graph';
 import { getNodeColor, getLinkColor } from './GraphColors.js';
-import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
+import { GraphData, OutlineSettings } from '../types/graph.js';
 
 export class GraphRenderer {
-  constructor(element) {
+  private element: HTMLElement;
+  private graph: any; // ForceGraph3D instance
+  private outlinePass: OutlinePass | null;
+
+  constructor(element: HTMLElement) {
     this.element = element;
     this.graph = null;
     this.outlinePass = null;
     this.init();
   }
 
-  init() {
+  private init(): void {
     this.graph = new ForceGraph3D(this.element)
       .nodeColor(getNodeColor)
       .nodeLabel(node => `${node.id}`)
@@ -28,15 +33,15 @@ export class GraphRenderer {
     setTimeout(() => this.setupOutlinePass(), 100);
   }
 
-  getGraph() {
+  public getGraph(): any {
     return this.graph;
   }
 
-  updateNodeColors() {
+  public updateNodeColors(): void {
     this.graph.nodeColor(getNodeColor);
   }
 
-  loadData(data) {
+  public loadData(data: GraphData): void {
     this.graph.graphData(data);
   }
 
@@ -46,7 +51,7 @@ export class GraphRenderer {
    * before updating to avoid unnecessary re-renders.
    * @param {Object} newData - The new graph data to update.
    */
-  updateData(newData) {
+  public updateData(newData: GraphData): void {
     // Only update if the data has actually changed
     const currentData = this.graph.graphData();
     if (this.hasDataChanged(currentData, newData)) {
@@ -61,7 +66,7 @@ export class GraphRenderer {
    * @param {*} newData - The new graph data to compare against.
    * @returns {boolean} - True if the data has changed, false otherwise.
    */
-  hasDataChanged(currentData, newData) {
+  private hasDataChanged(currentData: GraphData | null, newData: GraphData): boolean {
     // Simple comparison of data structure
     if (!currentData || !newData) return true;
 
@@ -101,7 +106,7 @@ export class GraphRenderer {
    * post-processing composer of the 3D Force Graph.
    * It also handles resizing the outline pass when the window is resized.
    */
-  setupOutlinePass() {
+  private setupOutlinePass(): void {
     try {
       const renderer = this.graph.renderer();
       const scene = this.graph.scene();
@@ -144,7 +149,7 @@ export class GraphRenderer {
       const handleResize = () => {
         const newSize = new THREE.Vector2();
         renderer.getSize(newSize);
-        this.outlinePass.setSize(newSize.x, newSize.y);
+        this.outlinePass!.setSize(newSize.x, newSize.y);
       };
       window.addEventListener('resize', handleResize);
 
@@ -154,7 +159,7 @@ export class GraphRenderer {
     }
   }
 
-  highlightObjects(objects) {
+  public highlightObjects(objects: THREE.Object3D[]): void {
     if (!this.outlinePass) {
       console.warn('OutlinePass not initialized');
       return;
@@ -163,15 +168,15 @@ export class GraphRenderer {
     this.outlinePass.selectedObjects = objects || [];
   }
 
-  clearHighlights() {
+  public clearHighlights(): void {
     this.highlightObjects([]);
   }
 
-  getOutlinePass() {
+  public getOutlinePass(): OutlinePass | null {
     return this.outlinePass;
   }
 
-  updateOutlineSettings(settings) {
+  public updateOutlineSettings(settings: OutlineSettings): void {
     if (!this.outlinePass) return;
 
     if (settings.edgeStrength !== undefined) {

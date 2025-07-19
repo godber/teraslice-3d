@@ -1,7 +1,17 @@
 import { loadGraphData } from './api.js';
+import { AutoRefreshOptions, AutoRefreshStatus, RefreshCallback, StatusCallback, GraphData } from '../types/graph.js';
 
 export class AutoRefresh {
-  constructor(refreshCallback, options = {}) {
+  private refreshCallback: RefreshCallback;
+  private interval: number;
+  private enabled: boolean;
+  private intervalId: NodeJS.Timeout | null;
+  private lastDataHash: number | null;
+  private lastUpdateTime: Date | null;
+  private connectionStatus: 'unknown' | 'connected' | 'error';
+  private statusCallbacks: StatusCallback[];
+
+  constructor(refreshCallback: RefreshCallback, options: AutoRefreshOptions = {}) {
     this.refreshCallback = refreshCallback;
     this.interval = options.interval || 90000; // Default 90 seconds
     this.enabled = options.enabled !== false; // Default enabled
@@ -20,7 +30,7 @@ export class AutoRefresh {
     }
   }
   
-  loadSettings() {
+  private loadSettings(): void {
     try {
       const settings = localStorage.getItem('autoRefreshSettings');
       if (settings) {
@@ -33,7 +43,7 @@ export class AutoRefresh {
     }
   }
   
-  saveSettings() {
+  private saveSettings(): void {
     try {
       const settings = {
         interval: this.interval,
@@ -45,7 +55,7 @@ export class AutoRefresh {
     }
   }
   
-  start() {
+  public start(): void {
     if (this.intervalId) {
       return; // Already running
     }
@@ -55,12 +65,12 @@ export class AutoRefresh {
     
     this.intervalId = setInterval(() => {
       this.refreshData();
-    }, this.interval);
+    }, this.interval) as NodeJS.Timeout;
     
     console.log(`Auto-refresh started with interval: ${this.interval}ms`);
   }
   
-  stop() {
+  public stop(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -72,7 +82,7 @@ export class AutoRefresh {
     console.log('Auto-refresh stopped');
   }
   
-  setInterval(newInterval) {
+  public setInterval(newInterval: number): void {
     this.interval = newInterval;
     this.saveSettings();
     
@@ -82,7 +92,7 @@ export class AutoRefresh {
     }
   }
   
-  async refreshData() {
+  private async refreshData(): Promise<void> {
     try {
       const data = await loadGraphData();
       const dataHash = this.hashData(data);
@@ -109,7 +119,7 @@ export class AutoRefresh {
     }
   }
   
-  hashData(data) {
+  private hashData(data: GraphData): number {
     // Simple hash function for change detection
     const str = JSON.stringify(data);
     let hash = 0;
@@ -121,18 +131,18 @@ export class AutoRefresh {
     return hash;
   }
   
-  setConnectionStatus(status) {
+  private setConnectionStatus(status: 'unknown' | 'connected' | 'error'): void {
     if (this.connectionStatus !== status) {
       this.connectionStatus = status;
       this.notifyStatusChange();
     }
   }
   
-  onStatusChange(callback) {
+  public onStatusChange(callback: StatusCallback): void {
     this.statusCallbacks.push(callback);
   }
   
-  notifyStatusChange() {
+  private notifyStatusChange(): void {
     this.statusCallbacks.forEach(callback => {
       try {
         callback(this.connectionStatus, this.lastUpdateTime);
@@ -142,7 +152,7 @@ export class AutoRefresh {
     });
   }
   
-  getStatus() {
+  public getStatus(): AutoRefreshStatus {
     return {
       enabled: this.enabled,
       interval: this.interval,
@@ -153,12 +163,12 @@ export class AutoRefresh {
   }
   
   // Manual refresh
-  async refresh() {
+  public async refresh(): Promise<void> {
     await this.refreshData();
   }
   
   // Destroy instance
-  destroy() {
+  public destroy(): void {
     this.stop();
     this.statusCallbacks = [];
   }
