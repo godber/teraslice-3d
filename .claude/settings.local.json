@@ -5,7 +5,7 @@
       "Bash(npm run build:*)",
       "Bash(uv add:*)",
       "Bash(uv run pytest:*)",
-      "Bash(mv:*)"
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

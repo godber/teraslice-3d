@@ -5,8 +5,13 @@ import { loadGraphData } from './utils/api.js';
 import { AutoRefresh } from './utils/autoRefresh.js';
 import './style.css';
 
-async function initializeApp() {
+async function initializeApp(): Promise<void> {
   const elem = document.getElementById('3d-graph');
+  
+  if (!elem) {
+    console.error('Could not find element with ID "3d-graph"');
+    return;
+  }
   
   // Initialize core components
   const graphRenderer = new GraphRenderer(elem);
@@ -23,7 +28,7 @@ async function initializeApp() {
   });
   
   // Initialize GUI controls with auto-refresh
-  const guiControls = new GuiControls(graphRenderer, graphFilters, autoRefresh);
+  new GuiControls(graphRenderer, graphFilters, autoRefresh);
   
   // Load and display graph data
   try {

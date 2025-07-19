@@ -1,8 +1,21 @@
 import { GUI } from 'lil-gui';
 import { colors } from '../graph/GraphColors.js';
+import { GraphRenderer } from '../graph/GraphRenderer.js';
+import { GraphFilters } from '../graph/GraphFilters.js';
+import { AutoRefresh } from '../utils/autoRefresh.js';
 
 export class GuiControls {
-  constructor(graphRenderer, graphFilters, autoRefresh) {
+  private graphRenderer: GraphRenderer;
+  private graphFilters: GraphFilters;
+  private autoRefresh: AutoRefresh;
+  private gui: GUI | null;
+  private connectionStatus: 'unknown' | 'connected' | 'error';
+  private lastUpdateTime: Date | null;
+  private statusController: any;
+  private lastUpdateController: any;
+  private refreshState: any;
+
+  constructor(graphRenderer: GraphRenderer, graphFilters: GraphFilters, autoRefresh: AutoRefresh) {
     this.graphRenderer = graphRenderer;
     this.graphFilters = graphFilters;
     this.autoRefresh = autoRefresh;
@@ -12,7 +25,7 @@ export class GuiControls {
     this.init();
   }
 
-  init() {
+  private init(): void {
     this.gui = new GUI({title: "Teraslice 3D Graph Controls"});
     this.setupFilterControls();
     this.setupColorControls();
@@ -22,15 +35,15 @@ export class GuiControls {
     // Setup auto-refresh status monitoring
     if (this.autoRefresh) {
       this.autoRefresh.onStatusChange((status, lastUpdateTime) => {
-        this.connectionStatus = status;
+        this.connectionStatus = status as 'unknown' | 'connected' | 'error';
         this.lastUpdateTime = lastUpdateTime;
         this.updateConnectionStatus();
       });
     }
   }
 
-  setupColorControls() {
-    const colorFolder = this.gui.addFolder('Node Colors');
+  private setupColorControls(): void {
+    const colorFolder = this.gui!.addFolder('Node Colors');
 
     colorFolder.addColor(colors, 'kafkaIncoming')
       .name('Kafka Incoming')
@@ -47,12 +60,12 @@ export class GuiControls {
     colorFolder.close();
   }
 
-  setupFilterControls() {
-    const filterFolder = this.gui.addFolder('Filtering');
+  private setupFilterControls(): void {
+    const filterFolder = this.gui!.addFolder('Filtering');
     const filterState = this.graphFilters.getFilterState();
 
     // Add filter mode selection
-    const modeController = filterFolder.add(filterState, 'filterMode', ['Remove', 'Highlight'])
+    filterFolder.add(filterState, 'filterMode', ['Remove', 'Highlight'])
       .name('Filter Mode')
       .onChange(value => {
         this.graphFilters.setFilterMode(value);
@@ -76,8 +89,8 @@ export class GuiControls {
     filterFolder.open();
   }
 
-  setupHighlightControls() {
-    const highlightFolder = this.gui.addFolder('Highlight Settings');
+  private setupHighlightControls(): void {
+    const highlightFolder = this.gui!.addFolder('Highlight Settings');
 
     // Create settings object with current OutlinePass values
     const highlightSettings = {
@@ -141,8 +154,8 @@ export class GuiControls {
     highlightFolder.close(); // Start collapsed
   }
 
-  setupAutoRefreshControls() {
-    const refreshFolder = this.gui.addFolder('Auto Refresh');
+  private setupAutoRefreshControls(): void {
+    const refreshFolder = this.gui!.addFolder('Auto Refresh');
 
     if (!this.autoRefresh) {
       refreshFolder.add({}, 'disabled').name('Auto-refresh not available');
@@ -203,7 +216,7 @@ export class GuiControls {
     refreshFolder.close();
   }
 
-  updateConnectionStatus() {
+  private updateConnectionStatus(): void {
     if (!this.refreshState) return;
 
     this.refreshState.status = this.connectionStatus;
@@ -220,7 +233,7 @@ export class GuiControls {
     }
   }
 
-  async clearCache() {
+  private async clearCache(): Promise<void> {
     try {
       const response = await fetch('/api/cache/clear', {
         method: 'POST',
@@ -246,12 +259,12 @@ export class GuiControls {
     }
   }
 
-  updateAllHighlightControls(settings) {
+  private updateAllHighlightControls(settings: any): void {
     // Update the renderer
     this.graphRenderer.updateOutlineSettings(settings);
 
     // Update all GUI controllers to reflect the new values
-    this.gui.controllersRecursive().forEach(controller => {
+    this.gui!.controllersRecursive().forEach(controller => {
       if (controller.property === 'edgeStrength' ||
           controller.property === 'edgeGlow' ||
           controller.property === 'edgeThickness') {
@@ -260,7 +273,7 @@ export class GuiControls {
     });
   }
 
-  destroy() {
+  public destroy(): void {
     if (this.gui) {
       this.gui.destroy();
     }
