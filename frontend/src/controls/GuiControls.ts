@@ -43,19 +43,52 @@ export class GuiControls {
   }
 
   private setupColorControls(): void {
-    const colorFolder = this.gui!.addFolder('Node Colors');
+    const colorFolder = this.gui!.addFolder('Colors');
 
-    colorFolder.addColor(colors, 'kafkaIncoming')
+    // Node colors
+    const nodeFolder = colorFolder.addFolder('Nodes');
+    nodeFolder.addColor(colors, 'kafkaIncoming')
       .name('Kafka Incoming')
       .onChange(() => this.graphRenderer.updateNodeColors());
 
-    colorFolder.addColor(colors, 'kafkaOther')
+    nodeFolder.addColor(colors, 'kafkaOther')
       .name('Kafka Other')
       .onChange(() => this.graphRenderer.updateNodeColors());
 
-    colorFolder.addColor(colors, 'elasticsearch')
+    nodeFolder.addColor(colors, 'elasticsearch')
       .name('Elasticsearch')
       .onChange(() => this.graphRenderer.updateNodeColors());
+
+    // Link colors
+    const linkFolder = colorFolder.addFolder('Links');
+    linkFolder.addColor(colors, 'linkRunning')
+      .name('Running')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    linkFolder.addColor(colors, 'linkStarting')
+      .name('Starting')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    linkFolder.addColor(colors, 'linkStopped')
+      .name('Stopped')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    linkFolder.addColor(colors, 'linkStopping')
+      .name('Stopping')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    linkFolder.addColor(colors, 'linkFailing')
+      .name('Failing')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    linkFolder.addColor(colors, 'linkDefault')
+      .name('Default')
+      .onChange(() => this.graphRenderer.updateLinkColors());
+
+    // Background color
+    colorFolder.addColor(colors, 'background')
+      .name('Background')
+      .onChange(() => this.graphRenderer.updateBackgroundColor());
 
     colorFolder.close();
   }

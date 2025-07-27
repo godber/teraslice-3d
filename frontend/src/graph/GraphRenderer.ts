@@ -1,5 +1,5 @@
 import ForceGraph3D from '3d-force-graph';
-import { getNodeColor, getLinkColor } from './GraphColors.js';
+import { getNodeColor, getLinkColor, colors } from './GraphColors.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
 import { GraphData, OutlineSettings } from '../types/graph.js';
@@ -30,7 +30,10 @@ export class GraphRenderer {
       .onLinkClick(link => window.open(`${link.url}`, '_blank'));
 
     // Setup outline pass after graph initialization
-    setTimeout(() => this.setupOutlinePass(), 100);
+    setTimeout(() => {
+      this.setupOutlinePass();
+      this.updateBackgroundColor();
+    }, 100);
   }
 
   public getGraph(): any {
@@ -39,6 +42,17 @@ export class GraphRenderer {
 
   public updateNodeColors(): void {
     this.graph.nodeColor(getNodeColor);
+  }
+
+  public updateLinkColors(): void {
+    this.graph.linkColor(getLinkColor);
+  }
+
+  public updateBackgroundColor(): void {
+    const renderer = this.graph.renderer();
+    if (renderer) {
+      renderer.setClearColor(colors.background);
+    }
   }
 
   public loadData(data: GraphData): void {
