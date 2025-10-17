@@ -20,19 +20,49 @@ in 3D. The app creates interactive network graphs showing data flow between
 jobs, from Kafka topics through processing jobs to final destinations like
 Elasticsearch.
 
+## Initial Setup
+
+### Prerequisites
+
+* Python 3.11 or higher
+* Node.js 18 or higher
+* uv package manager for Python
+
+### Installing uv
+
+If you don't have `uv` installed:
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Setting Up the Project
+
+```bash
+# Install backend dependencies
+cd backend && uv sync && cd ..
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+```
+
 ## Development Commands
 
 ### Running the Development Server
 
 ```bash
 # Basic development server
-cd backend && TERASLICE_URL="http://localhost:5678" uv run fastapi dev
+cd backend && TERASLICE_URL="http://localhost:5678" uv run python -m fastapi dev
 
 # With debug logging
-cd backend && LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+cd backend && LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
 
 # With custom CA certificate
-cd backend && TERASLICE_URL="https://teraslice.example.com" CACERT_FILE="/path/to/ca.pem" uv run fastapi dev
+cd backend && TERASLICE_URL="https://teraslice.example.com" CACERT_FILE="/path/to/ca.pem" uv run python -m fastapi dev
 ```
 
 ### Frontend Development
@@ -82,21 +112,22 @@ Uses `uv` for Python package management. Dependencies are defined in `backend/py
 
 ### Frontend Architecture
 
-* **HTML Template** (`templates/graph.html`): Single-page interface that renders
-  the 3D visualization
-* **3D Force Graph Library** (`static/3d-force-graph.js`): Third-party JavaScript
-  library (v1.77.0) for creating interactive 3D network graphs
-* **Static File Serving**: FastAPI serves static assets from `/static` directory
-  and templates from `/templates`
+* **Vite-based Build System** (`frontend/`): Modern TypeScript project with ES modules
+* **3D Force Graph Library**: Third-party JavaScript library for creating
+  interactive 3D network graphs using ThreeJS
+* **Modular Components**: TypeScript modules organized in `frontend/src/`
+* **Static File Serving**: FastAPI serves production build from `/frontend/dist/`
 
-The frontend fetches graph data from `/api/pipeline_graph` endpoint and uses the
-ForceGraph3D library to render:
+The frontend fetches graph data from `/api/pipeline_graph` endpoint and renders:
 
 * **Node colors**: Yellow for "incoming" Kafka topics, blue for other Kafka
   topics, green for Elasticsearch
 * **Link properties**: Width scaled by worker count (1-200 workers → 1-20px),
   color by job status
 * **Interactivity**: Click links to open Teraslice job pages in new tabs
+
+During development, the frontend dev server (port 5173) proxies API requests to
+the backend (port 8000), so both servers must run simultaneously.
 
 ### Key Endpoints
 

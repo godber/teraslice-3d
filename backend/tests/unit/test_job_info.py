@@ -19,13 +19,124 @@ from tests.fixtures.teraslice_jobs import (
     kafka_reader_default_connection_job,
     kafka_sender_default_connection_job,
     all_default_connections_job,
-    routed_sender_default_connections_job
+    routed_sender_default_connections_job,
+    kafka_sender_with_api_name_job,
+    kafka_reader_with_api_name_job
 )
+
+
+class TestJobInfoHelperMethods:
+    """Test JobInfo helper methods"""
+
+    def setup_method(self):
+        """Set up test fixtures"""
+        self.logger = Mock(spec=logging.Logger)
+
+    def test_get_field_from_operation_direct(self):
+        """Test getting field directly from operation"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader", "topic": "my-topic"}],
+            "apis": []
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "topic": "my-topic"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result == "my-topic"
+
+    def test_get_field_from_api_definition(self):
+        """Test getting field from API definition"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": [
+                {"_name": "my_api", "topic": "api-topic"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "api_name": "my_api"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result == "api-topic"
+
+    def test_get_field_missing_from_operation(self):
+        """Test getting field that doesn't exist in operation"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": []
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result is None
+
+    def test_get_field_api_name_not_found(self):
+        """Test getting field when api_name doesn't match any API"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": [
+                {"_name": "other_api", "topic": "other-topic"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "api_name": "my_api"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result is None
+
+    def test_get_field_missing_from_api(self):
+        """Test getting field that doesn't exist in API definition"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": [
+                {"_name": "my_api", "index": "some-index"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "api_name": "my_api"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result is None
+
+    def test_get_field_prefers_api_over_operation(self):
+        """Test that API definition takes precedence when api_name is present"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": [
+                {"_name": "my_api", "topic": "api-topic"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "api_name": "my_api", "topic": "op-topic"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'topic')
+
+        assert result == "api-topic"
+
+    def test_get_field_works_with_index(self):
+        """Test getting 'index' field for elasticsearch operations"""
+        job_data = {
+            "operations": [{"_op": "elasticsearch_bulk"}],
+            "apis": [
+                {"_name": "es_api", "index": "my-index"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "elasticsearch_bulk", "api_name": "es_api"}
+
+        result = job_info._get_field_from_operation_or_api(op, 'index')
+
+        assert result == "my-index"
 
 
 class TestJobInfoSourceNode:
     """Test JobInfo.process_source_node() method"""
-    
+
     def setup_method(self):
         """Set up test fixtures"""
         self.logger = Mock(spec=logging.Logger)
@@ -62,9 +173,18 @@ class TestJobInfoSourceNode:
         """Test source node processing for kafka_reader with default connection"""
         job_data = kafka_reader_default_connection_job()
         job_info = JobInfo(job_data, self.logger)
-        
+
         assert job_info.source is not None
         assert job_info.source.id == "default:input-topic"
+        assert job_info.source.connector_type == "KAFKA"
+
+    def test_process_source_node_kafka_reader_with_api_name(self):
+        """Test source node processing for kafka_reader with api_name"""
+        job_data = kafka_reader_with_api_name_job()
+        job_info = JobInfo(job_data, self.logger)
+
+        assert job_info.source is not None
+        assert job_info.source.id == "kafka_incoming:source-topic-json-v1"
         assert job_info.source.connector_type == "KAFKA"
 
 
@@ -79,12 +199,22 @@ class TestJobInfoDestinationNodes:
         """Test destination node processing for kafka_sender operation"""
         job_data = kafka_reader_to_kafka_sender_job()
         job_info = JobInfo(job_data, self.logger)
-        
+
         assert len(job_info.destinations) == 1
         dest = job_info.destinations[0]
         assert dest.id == "kafka_cluster2:processed-data"
         assert dest.connector_type == "KAFKA"
-    
+
+    def test_process_destination_nodes_kafka_sender_with_api_name(self):
+        """Test destination node processing for kafka_sender with api_name"""
+        job_data = kafka_sender_with_api_name_job()
+        job_info = JobInfo(job_data, self.logger)
+
+        assert len(job_info.destinations) == 1
+        dest = job_info.destinations[0]
+        assert dest.id == "kafka_incoming:my-topic-json-v1"
+        assert dest.connector_type == "KAFKA"
+
     def test_process_destination_nodes_elasticsearch_bulk(self):
         """Test destination node processing for elasticsearch_bulk operation"""
         job_data = kafka_reader_to_elasticsearch_job()

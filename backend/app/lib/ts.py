@@ -35,17 +35,45 @@ class JobInfo:
         self.source = self.process_source_node()
         self.destinations = self.process_destination_nodes()
 
+    def _get_field_from_operation_or_api(self, op, field_name):
+        """
+        Get a field value from operation or API definition.
+
+        Args:
+            op: The operation dictionary
+            field_name: The field to look up (e.g., 'topic', 'index')
+
+        Returns:
+            The field value if found, None otherwise
+        """
+        value = None
+        if 'api_name' in op:
+            # Look up from APIs array
+            for api in self.job['apis']:
+                if api['_name'] == op['api_name']:
+                    value = api.get(field_name)
+                    break
+        else:
+            # Get directly from operation
+            value = op.get(field_name)
+
+        return value
+
     def process_source_node(self):
         source = None
         op = self.job['operations'][0]
 
         if op['_op'] == 'kafka_reader':
-            # souce_node -> kafka_cluster1:topic1
-            source = StorageNode(
-                # if connection is not specified, Teraslice assumes 'default'
-                id=f"{op.get('connection', 'default')}:{op['topic']}",
-                connector_type='KAFKA'
-            )
+            topic = self._get_field_from_operation_or_api(op, 'topic')
+
+            if topic:
+                source = StorageNode(
+                    # if connection is not specified, Teraslice assumes 'default'
+                    id=f"{op.get('connection', 'default')}:{topic}",
+                    connector_type='KAFKA'
+                )
+            else:
+                self.logger.warning(f"kafka_reader missing topic: {op}")
         elif op['_op'] == 'data_generator':
             # source_node -> data_generator
             source = StorageNode(
@@ -62,21 +90,31 @@ class JobInfo:
         op = self.job['operations'][-1]
 
         if op['_op'] == 'kafka_sender':
-            destinations.append(
-                StorageNode(
-                    # kafka_cluster1:topic1
-                    id=f"{op.get('connection', 'default')}:{op['topic']}",
-                    connector_type='KAFKA'
+            topic = self._get_field_from_operation_or_api(op, 'topic')
+
+            if topic:
+                destinations.append(
+                    StorageNode(
+                        # kafka_cluster1:topic1
+                        id=f"{op.get('connection', 'default')}:{topic}",
+                        connector_type='KAFKA'
+                    )
                 )
-            )
+            else:
+                self.logger.warning(f"kafka_sender missing topic: {op}")
         elif op['_op'] == 'elasticsearch_bulk':
-            destinations.append(
-                StorageNode(
-                    # es_cluster1:index1
-                    id = f"{op.get('connection', 'default')}:{op['index']}",
-                    connector_type = 'ES'
+            index = self._get_field_from_operation_or_api(op, 'index')
+
+            if index:
+                destinations.append(
+                    StorageNode(
+                        # es_cluster1:index1
+                        id=f"{op.get('connection', 'default')}:{index}",
+                        connector_type='ES'
+                    )
                 )
-            )
+            else:
+                self.logger.warning(f"elasticsearch_bulk missing index: {op}")
         elif op['_op'] == 'routed_sender':
             routed_sender_api = None
             destination_type = None

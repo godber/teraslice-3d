@@ -15,15 +15,49 @@ with `kafka` and that there are special connectors or topics that include the
 string `incoming`.  These will be treated specially.  These are based on
 internal naming conventions that not everyone may follow.
 
+## Getting Started
+
+### Prerequisites
+
+* Python 3.11 or higher
+* Node.js 18 or higher
+* uv package manager for Python
+
+### Installing uv
+
+If you don't have `uv` installed:
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Initial Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/godber/teraslice-3d.git
+cd teraslice-3d
+
+# Install backend dependencies
+cd backend && uv sync && cd ..
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+```
+
 ## Development
 
 ### Backend Development
 
 ```bash
 cd backend
-TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
-TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run fastapi dev
-LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
+TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run python -m fastapi dev
+LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
 ```
 
 ### Frontend Development
