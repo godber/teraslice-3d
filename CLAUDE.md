@@ -8,7 +8,7 @@ code in this repository.
 * Always do your work on git a branch and submit a PR.
 * When you are done editing files and before you commit changes you should:
   * Always run backend Python tests
-    * `cd backend && uv add --group test pytest pytest-asyncio && uv run pytest`
+    * `cd backend && uv add --group test pytest pytest-asyncio && uv run pytest && cd -`
   * Always do a test build of the frontend
     * `cd frontend && npm install && npm run build && cd -`
   * Fix any errors or failures you encounter.
