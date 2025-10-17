@@ -6,11 +6,16 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Python runtime stage
-FROM python:3.12-slim AS runtime
+# Stage 2: Python build stage
+FROM python:3.13-slim AS python-builder
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install build dependencies for compiling Python packages with C extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy Python application files
 COPY backend/pyproject.toml backend/uv.lock ./backend/
@@ -20,9 +25,20 @@ COPY backend/app/ ./backend/app/
 WORKDIR /backend
 RUN uv sync --frozen --no-cache --no-dev
 
-# Copy built frontend assets from build stage
+# Stage 3: Python runtime stage (lean final image)
+FROM python:3.13-slim AS runtime
+
+# Copy uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy the built virtual environment from python-builder
+COPY --from=python-builder /backend/.venv /backend/.venv
+COPY --from=python-builder /backend/app /backend/app
+
+# Copy built frontend assets from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist /frontend/dist
 
+WORKDIR /backend
+
 # Run the application
-# ./.venv/bin/fastapi run app/main.py --port 80 --host 0.0.0.0
-CMD ["./.venv/bin/fastapi", "run", "app/main.py", "--port", "80", "--host", "0.0.0.0"]
+CMD ["./.venv/bin/python", "-m", "fastapi", "run", "app/main.py", "--port", "80", "--host", "0.0.0.0"]

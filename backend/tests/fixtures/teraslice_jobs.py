@@ -301,3 +301,67 @@ def routed_sender_default_connections_job():
             }
         ]
     }
+
+
+def kafka_sender_with_api_name_job():
+    """kafka_sender using api_name to reference topic from apis array"""
+    return {
+        "job_id": "kafka-sender-api-001",
+        "name": "kafka-sender-api-pipeline",
+        "workers": 4,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "connection": "kafka_cluster1",
+                "topic": "input-topic"
+            },
+            {
+                "_op": "kafka_sender",
+                "connection": "kafka_incoming",
+                "api_name": "kafka_sender_api",
+                "size": 20000
+            }
+        ],
+        "apis": [
+            {
+                "_name": "kafka_sender_api",
+                "topic": "my-topic-json-v1",
+                "rdkafka_options": {
+                    "message.max.bytes": 31457280
+                }
+            }
+        ]
+    }
+
+
+def kafka_reader_with_api_name_job():
+    """kafka_reader using api_name to reference topic from apis array"""
+    return {
+        "job_id": "kafka-reader-api-001",
+        "name": "kafka-reader-api-pipeline",
+        "workers": 3,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "kafka_reader",
+                "connection": "kafka_incoming",
+                "api_name": "kafka_reader_api",
+                "size": 10000
+            },
+            {
+                "_op": "elasticsearch_bulk",
+                "connection": "es_cluster1",
+                "index": "output-index"
+            }
+        ],
+        "apis": [
+            {
+                "_name": "kafka_reader_api",
+                "topic": "source-topic-json-v1",
+                "rdkafka_options": {
+                    "fetch.min.bytes": 1024
+                }
+            }
+        ]
+    }

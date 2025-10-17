@@ -15,15 +15,49 @@ with `kafka` and that there are special connectors or topics that include the
 string `incoming`.  These will be treated specially.  These are based on
 internal naming conventions that not everyone may follow.
 
+## Getting Started
+
+### Prerequisites
+
+* Python 3.11 or higher
+* Node.js 18 or higher
+* uv package manager for Python
+
+### Installing uv
+
+If you don't have `uv` installed:
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Initial Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/godber/teraslice-3d.git
+cd teraslice-3d
+
+# Install backend dependencies
+cd backend && uv sync && cd ..
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+```
+
 ## Development
 
 ### Backend Development
 
 ```bash
 cd backend
-TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
-TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run fastapi dev
-LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run fastapi dev
+TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
+TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run python -m fastapi dev
+LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
 ```
 
 ### Frontend Development
@@ -121,3 +155,39 @@ cd frontend && npm install && npm run build
 ```
 
 The frontend build generates optimized production assets in `frontend/dist/` that are served by the FastAPI application.
+
+## Release Process
+
+This project uses GitHub Releases to trigger automated Docker image builds and publishes to GitHub Container Registry.
+
+### Creating a Release
+
+1. **Merge your changes** to the `main` branch via pull request
+
+2. **Create a GitHub Release**:
+   - Navigate to the repository on GitHub
+   - Go to **Releases** → **Draft a new release**
+   - Click **Choose a tag** and create a new tag (e.g., `v0.0.9`)
+   - Set the release title (typically matches the tag, e.g., "v0.0.9")
+   - Add release notes describing the changes
+   - Click **Publish release**
+
+3. **Automated workflow**:
+   - The `publish-tag.yaml` workflow automatically triggers on release publication
+   - Builds Docker images for both `linux/amd64` and `linux/arm64` platforms
+   - Pushes images to `ghcr.io/godber/teraslice-3d` with:
+     - Release tag (e.g., `v0.0.9`)
+     - `latest` tag
+   - Generates build provenance attestation
+
+### Published Images
+
+All releases are published to GitHub Container Registry:
+
+- **Repository**: https://github.com/godber/teraslice-3d/pkgs/container/teraslice-3d
+- **Pull by version**: `docker pull ghcr.io/godber/teraslice-3d:v0.0.9`
+- **Pull latest**: `docker pull ghcr.io/godber/teraslice-3d:latest`
+
+### Version Numbering
+
+This project follows semantic versioning with the format `v0.0.x` during early development. Version numbers are managed through Git tags only - no manual version bumping in code is required.
