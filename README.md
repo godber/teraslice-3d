@@ -155,3 +155,39 @@ cd frontend && npm install && npm run build
 ```
 
 The frontend build generates optimized production assets in `frontend/dist/` that are served by the FastAPI application.
+
+## Release Process
+
+This project uses GitHub Releases to trigger automated Docker image builds and publishes to GitHub Container Registry.
+
+### Creating a Release
+
+1. **Merge your changes** to the `main` branch via pull request
+
+2. **Create a GitHub Release**:
+   - Navigate to the repository on GitHub
+   - Go to **Releases** → **Draft a new release**
+   - Click **Choose a tag** and create a new tag (e.g., `v0.0.9`)
+   - Set the release title (typically matches the tag, e.g., "v0.0.9")
+   - Add release notes describing the changes
+   - Click **Publish release**
+
+3. **Automated workflow**:
+   - The `publish-tag.yaml` workflow automatically triggers on release publication
+   - Builds Docker images for both `linux/amd64` and `linux/arm64` platforms
+   - Pushes images to `ghcr.io/godber/teraslice-3d` with:
+     - Release tag (e.g., `v0.0.9`)
+     - `latest` tag
+   - Generates build provenance attestation
+
+### Published Images
+
+All releases are published to GitHub Container Registry:
+
+- **Repository**: https://github.com/godber/teraslice-3d/pkgs/container/teraslice-3d
+- **Pull by version**: `docker pull ghcr.io/godber/teraslice-3d:v0.0.9`
+- **Pull latest**: `docker pull ghcr.io/godber/teraslice-3d:latest`
+
+### Version Numbering
+
+This project follows semantic versioning with the format `v0.0.x` during early development. Version numbers are managed through Git tags only - no manual version bumping in code is required.
