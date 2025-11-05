@@ -207,4 +207,92 @@ export class GraphRenderer {
       this.outlinePass.hiddenEdgeColor.setHex(settings.visibleEdgeColor);
     }
   }
+
+  // ========================================================================
+  // WebXR Support Methods
+  // ========================================================================
+
+  /**
+   * Get the graph container (scene object containing all graph elements)
+   * For manipulation, we want to manipulate the entire scene
+   */
+  public getGraphContainer(): THREE.Object3D | null {
+    const scene = this.graph.scene();
+    if (!scene) {
+      console.error('Scene not available');
+      return null;
+    }
+
+    // Create or get a container group for the graph
+    // The ForceGraph3D library renders directly into the scene
+    // We'll create a parent container to manipulate the entire graph
+    let container = scene.getObjectByName('xr-graph-container') as THREE.Group;
+
+    if (!container) {
+      container = new THREE.Group();
+      container.name = 'xr-graph-container';
+
+      // Move all existing scene children into the container
+      const children = [...scene.children]; // Clone array since we're modifying it
+      for (const child of children) {
+        // Skip camera, lights that should not be moved
+        if (child.type !== 'Camera' &&
+            child.type !== 'AmbientLight' &&
+            child.type !== 'DirectionalLight' &&
+            child.type !== 'PointLight' &&
+            child.type !== 'SpotLight' &&
+            child.type !== 'HemisphereLight') {
+          container.add(child);
+        }
+      }
+
+      scene.add(container);
+      console.log('Created XR graph container');
+    }
+
+    return container;
+  }
+
+  /**
+   * Disable orbit controls (incompatible with XR mode)
+   */
+  public disableOrbitControls(): void {
+    const controls = this.graph.controls();
+    if (controls) {
+      controls.enabled = false;
+      console.log('Orbit controls disabled for XR mode');
+    }
+  }
+
+  /**
+   * Re-enable orbit controls after exiting XR mode
+   */
+  public enableOrbitControls(): void {
+    const controls = this.graph.controls();
+    if (controls) {
+      controls.enabled = true;
+      console.log('Orbit controls re-enabled');
+    }
+  }
+
+  /**
+   * Get the Three.js renderer for XR setup
+   */
+  public getRenderer(): THREE.WebGLRenderer | null {
+    return this.graph.renderer() || null;
+  }
+
+  /**
+   * Get the Three.js scene for raycasting and XR setup
+   */
+  public getScene(): THREE.Scene | null {
+    return this.graph.scene() || null;
+  }
+
+  /**
+   * Get the Three.js camera for positioning calculations
+   */
+  public getCamera(): THREE.Camera | null {
+    return this.graph.camera() || null;
+  }
 }

@@ -8,8 +8,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@webxr-input-profiles/motion-controllers": "^1.0.0",
     "3d-force-graph": "^1.77.0",
-    "lil-gui": "^0.19.0"
+    "lil-gui": "^0.19.0",
+    "three-mesh-ui": "^6.5.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.14",

@@ -4,9 +4,95 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teraslice 3D Graph</title>
+  <style>
+    #xr-ui {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1000;
+    }
+
+    #enter-spatial-button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.2s;
+    }
+
+    #enter-spatial-button:hover {
+      background-color: #0056b3;
+    }
+
+    #enter-spatial-button:active {
+      background-color: #004085;
+    }
+
+    #exit-spatial-button {
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.2s;
+    }
+
+    #exit-spatial-button:hover {
+      background-color: #c82333;
+    }
+
+    #spatial-not-supported {
+      padding: 12px 16px;
+      background-color: #ffc107;
+      color: #000;
+      border-radius: 6px;
+      font-size: 14px;
+      max-width: 300px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #xr-status {
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      padding: 8px 16px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
   <div id="3d-graph"></div>
+
+  <!-- XR UI Controls -->
+  <div id="xr-ui">
+    <button id="enter-spatial-button" class="hidden">Enter Spatial Mode</button>
+    <button id="exit-spatial-button" class="hidden">Exit Spatial Mode</button>
+    <div id="spatial-not-supported" class="hidden">
+      Spatial computing with hand tracking not supported on this device
+    </div>
+  </div>
+
+  <!-- XR Status Indicator -->
+  <div id="xr-status" class="hidden">
+    <span id="xr-status-text">Initializing...</span>
+  </div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
