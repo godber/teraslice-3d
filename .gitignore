@@ -5,3 +5,4 @@ frontend/dist
 *.pyc
 *.pyo
 *.pyd
+*_output.log

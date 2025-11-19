@@ -1,9 +1,22 @@
 import { GraphRenderer } from './graph/GraphRenderer.js';
 import { GraphFilters } from './graph/GraphFilters.js';
 import { GuiControls } from './controls/GuiControls.js';
-import { loadGraphData } from './utils/api.js';
+import { loadGraphData, fetchVersion } from './utils/api.js';
 import { AutoRefresh } from './utils/autoRefresh.js';
 import './style.css';
+
+async function displayVersion(): Promise<void> {
+  const versionInfo = document.getElementById('version-info');
+  if (versionInfo) {
+    try {
+      const version = await fetchVersion();
+      versionInfo.textContent = `Version: ${version}`;
+    } catch (error) {
+      console.error('Failed to fetch version:', error);
+      versionInfo.textContent = 'Version: unknown';
+    }
+  }
+}
 
 async function initializeApp(): Promise<void> {
   const elem = document.getElementById('3d-graph');
@@ -41,4 +54,7 @@ async function initializeApp(): Promise<void> {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeApp);
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApp();
+  displayVersion();
+});

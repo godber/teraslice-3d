@@ -171,6 +171,17 @@ async def get_pipeline_graph():
         logger.error(f"Failed to generate pipeline graph data: {e}")
         raise e
 
+@app.get("/api/version", response_class=JSONResponse)
+async def get_version():
+    """Fetch the version from the VERSION file."""
+    try:
+        with open("VERSION") as f:
+            version = f.read().strip()
+        return {"version": version}
+    except FileNotFoundError:
+        return {"version": "unknown"}
+
+
 @app.get("/api/cache/status", response_class=JSONResponse)
 async def get_cache_status():
     return cache.get_status()
