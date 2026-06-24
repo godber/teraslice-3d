@@ -2,6 +2,7 @@ import logging
 import os
 import pprint
 import ssl
+import tomllib
 
 import httpx
 
@@ -170,6 +171,30 @@ async def get_pipeline_graph():
     except Exception as e:
         logger.error(f"Failed to generate pipeline graph data: {e}")
         raise e
+
+def _read_app_version() -> str:
+    """Read the project version from pyproject.toml (the single source of truth).
+
+    The path is resolved relative to this file so it does not depend on the
+    process working directory.
+    """
+    pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+    try:
+        with open(pyproject_path, "rb") as f:
+            return tomllib.load(f)["project"]["version"]
+    except (FileNotFoundError, KeyError) as e:
+        logger.warning(f"Could not determine app version: {e}")
+        return "unknown"
+
+
+APP_VERSION = _read_app_version()
+
+
+@app.get("/api/version", response_class=JSONResponse)
+async def get_version():
+    """Return the application version."""
+    return {"version": APP_VERSION}
+
 
 @app.get("/api/cache/status", response_class=JSONResponse)
 async def get_cache_status():
