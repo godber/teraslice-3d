@@ -35,29 +35,75 @@ class JobInfo:
         self.source = self.process_source_node()
         self.destinations = self.process_destination_nodes()
 
-    def _get_field_from_operation_or_api(self, op, field_name):
+    def _get_api_for_operation(self, op):
         """
-        Get a field value from operation or API definition.
+        Find the API definition referenced by an operation.
+
+        In Teraslice v3, an operation that uses an API references it via the
+        `_api_name` field (renamed from `api_name` in v2).
 
         Args:
             op: The operation dictionary
-            field_name: The field to look up (e.g., 'topic', 'index')
+
+        Returns:
+            The matching API dictionary if found, None otherwise
+        """
+        api_name = op.get('_api_name')
+        if api_name is None:
+            return None
+
+        for api in self.job.get('apis', []):
+            if api.get('_name') == api_name:
+                return api
+
+        return None
+
+    def _get_field_from_operation_or_api(self, op, op_field, api_field=None):
+        """
+        Get a field value from an operation's API definition or the operation.
+
+        In Teraslice v3, operations that use an API must declare it via
+        `_api_name`, and the API-related fields (e.g. topic, index, connection)
+        live on the API definition. Fields set directly on the operation are
+        ignored when an API is declared. Operations without an API still carry
+        these fields directly.
+
+        Note that some fields are named differently on the API vs the
+        operation (e.g. the connection is `_connection` on an API but
+        `connection` on a bare operation), so `api_field` can be supplied
+        separately from `op_field`.
+
+        Args:
+            op: The operation dictionary
+            op_field: The field name to read from the operation directly
+            api_field: The field name to read from the API definition
+                (defaults to op_field when not supplied)
 
         Returns:
             The field value if found, None otherwise
         """
-        value = None
-        if 'api_name' in op:
-            # Look up from APIs array
-            for api in self.job['apis']:
-                if api['_name'] == op['api_name']:
-                    value = api.get(field_name)
-                    break
-        else:
-            # Get directly from operation
-            value = op.get(field_name)
+        if api_field is None:
+            api_field = op_field
 
-        return value
+        api = self._get_api_for_operation(op)
+        if api is not None:
+            return api.get(api_field)
+
+        # No API declared - read directly from the operation (v3 still allows
+        # bare operations, and this keeps default-connection handling working).
+        if '_api_name' in op:
+            # An API was referenced but not found; do not fall back to the op.
+            return None
+
+        return op.get(op_field)
+
+    def _get_connection(self, op):
+        """Resolve the connection name for an operation, defaulting to
+        'default' when unspecified (Teraslice's implicit connection name)."""
+        connection = self._get_field_from_operation_or_api(
+            op, 'connection', '_connection'
+        )
+        return connection if connection else 'default'
 
     def process_source_node(self):
         source = None
@@ -69,7 +115,7 @@ class JobInfo:
             if topic:
                 source = StorageNode(
                     # if connection is not specified, Teraslice assumes 'default'
-                    id=f"{op.get('connection', 'default')}:{topic}",
+                    id=f"{self._get_connection(op)}:{topic}",
                     connector_type='KAFKA'
                 )
             else:
@@ -96,7 +142,7 @@ class JobInfo:
                 destinations.append(
                     StorageNode(
                         # kafka_cluster1:topic1
-                        id=f"{op.get('connection', 'default')}:{topic}",
+                        id=f"{self._get_connection(op)}:{topic}",
                         connector_type='KAFKA'
                     )
                 )
@@ -109,20 +155,22 @@ class JobInfo:
                 destinations.append(
                     StorageNode(
                         # es_cluster1:index1
-                        id=f"{op.get('connection', 'default')}:{index}",
+                        id=f"{self._get_connection(op)}:{index}",
                         connector_type='ES'
                     )
                 )
             else:
                 self.logger.warning(f"elasticsearch_bulk missing index: {op}")
         elif op['_op'] == 'routed_sender':
-            routed_sender_api = None
             destination_type = None
 
-            # loop over all APIs to find the one used by the routed sender
-            for api in self.job['apis']:
-                if api['_name'] == op['api_name']:
-                    routed_sender_api = api
+            # find the API used by the routed sender (referenced via _api_name
+            # in Teraslice v3)
+            routed_sender_api = self._get_api_for_operation(op)
+
+            if routed_sender_api is None:
+                self.logger.warning(f"routed_sender missing api: {op}")
+                return destinations
 
             if 'index' in routed_sender_api:
                 destination_type = 'ES'
@@ -132,13 +180,14 @@ class JobInfo:
             # suffix is the last part of the destination topic or index
             # prefix is the beginning part of the destination kafka topic or
             # elasticsearch index, it comes from the matching api's index or
-            # topic value
+            # topic value. For routed_sender the connection is supplied by the
+            # routing map values rather than the api's _connection.
             for suffix, connection in op['routing'].items():
                 if destination_type == 'ES':
                     destinations.append(
                         StorageNode(
                             # es_cluster1:index1-**
-                            id = f"{connection}:{api['index']}-{suffix}",
+                            id=f"{connection}:{routed_sender_api['index']}-{suffix}",
                             connector_type=destination_type
                         )
                     )
@@ -146,7 +195,7 @@ class JobInfo:
                     destinations.append(
                         StorageNode(
                             # kafka_cluster1:topic1-**
-                            id=f"{connection}:{api['topic']}-{suffix}",
+                            id=f"{connection}:{routed_sender_api['topic']}-{suffix}",
                             connector_type=destination_type
                         )
                     )

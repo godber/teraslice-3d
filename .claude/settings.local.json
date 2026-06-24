@@ -5,7 +5,8 @@
       "Bash(npm run build:*)",
       "Bash(uv add:*)",
       "Bash(uv run pytest:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }
