@@ -5,8 +5,11 @@ code in this repository.
 
 ## Instructions for Claude Code
 
-* Always do your work on git a branch and submit a PR.
-* When you are done editing files and before you commit changes you should:
+* Always do your work on a git branch, intended to become a PR.
+* Do NOT run `git add`, `git commit`, or `git push` yourself. The user prefers
+  to stage, commit, and push manually. When changes are ready, provide a
+  suggested commit message and let the user handle all git operations.
+* When you are done editing files and before changes are committed you should:
   * Always run backend Python tests
     * `cd backend && uv add --group test pytest pytest-asyncio && uv run pytest && cd -`
   * Always do a test build of the frontend
@@ -146,6 +149,21 @@ The application analyzes Teraslice job operations to identify:
 
 Special handling for `routed_sender` operations that can write to multiple
 destinations based on routing configuration.
+
+This code targets **Teraslice v3** job configurations (see
+[teraslice#4254](https://github.com/terascope/teraslice/issues/4254)). In v3,
+operations that use an API declare it via `_api_name`, and the API-related
+fields live on the matching entry in the job's `apis` array:
+
+* The source/destination `topic` (Kafka) or `index` (Elasticsearch) is read
+  from the API definition, not the operation.
+* The connection is `_connection` on an API definition (vs `connection` on a
+  bare operation that does not declare an API).
+* When an operation declares `_api_name`, fields set directly on the operation
+  are ignored, matching Teraslice v3 behavior. Operations without `_api_name`
+  fall back to reading fields directly off the operation.
+* `routed_sender` reads its `index`/`topic` prefix from the referenced API and
+  its connection(s) from the operation's `routing` map values.
 
 ### Configuration
 

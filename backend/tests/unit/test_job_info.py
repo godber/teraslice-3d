@@ -21,7 +21,9 @@ from tests.fixtures.teraslice_jobs import (
     all_default_connections_job,
     routed_sender_default_connections_job,
     kafka_sender_with_api_name_job,
-    kafka_reader_with_api_name_job
+    kafka_reader_with_api_name_job,
+    op_fields_ignored_when_api_declared_job,
+    bare_operation_job
 )
 
 
@@ -54,11 +56,30 @@ class TestJobInfoHelperMethods:
             ]
         }
         job_info = JobInfo(job_data, self.logger)
-        op = {"_op": "kafka_reader", "api_name": "my_api"}
+        op = {"_op": "kafka_reader", "_api_name": "my_api"}
 
         result = job_info._get_field_from_operation_or_api(op, 'topic')
 
         assert result == "api-topic"
+
+    def test_get_connection_field_from_api_definition(self):
+        """Connection lives on the api as _connection (vs 'connection' on a
+        bare op)"""
+        job_data = {
+            "operations": [{"_op": "kafka_reader"}],
+            "apis": [
+                {"_name": "my_api", "topic": "api-topic",
+                 "_connection": "kafka_x"}
+            ]
+        }
+        job_info = JobInfo(job_data, self.logger)
+        op = {"_op": "kafka_reader", "_api_name": "my_api"}
+
+        result = job_info._get_field_from_operation_or_api(
+            op, 'connection', '_connection'
+        )
+
+        assert result == "kafka_x"
 
     def test_get_field_missing_from_operation(self):
         """Test getting field that doesn't exist in operation"""
@@ -82,7 +103,7 @@ class TestJobInfoHelperMethods:
             ]
         }
         job_info = JobInfo(job_data, self.logger)
-        op = {"_op": "kafka_reader", "api_name": "my_api"}
+        op = {"_op": "kafka_reader", "_api_name": "my_api"}
 
         result = job_info._get_field_from_operation_or_api(op, 'topic')
 
@@ -97,7 +118,7 @@ class TestJobInfoHelperMethods:
             ]
         }
         job_info = JobInfo(job_data, self.logger)
-        op = {"_op": "kafka_reader", "api_name": "my_api"}
+        op = {"_op": "kafka_reader", "_api_name": "my_api"}
 
         result = job_info._get_field_from_operation_or_api(op, 'topic')
 
@@ -112,7 +133,7 @@ class TestJobInfoHelperMethods:
             ]
         }
         job_info = JobInfo(job_data, self.logger)
-        op = {"_op": "kafka_reader", "api_name": "my_api", "topic": "op-topic"}
+        op = {"_op": "kafka_reader", "_api_name": "my_api", "topic": "op-topic"}
 
         result = job_info._get_field_from_operation_or_api(op, 'topic')
 
@@ -127,7 +148,7 @@ class TestJobInfoHelperMethods:
             ]
         }
         job_info = JobInfo(job_data, self.logger)
-        op = {"_op": "elasticsearch_bulk", "api_name": "es_api"}
+        op = {"_op": "elasticsearch_bulk", "_api_name": "es_api"}
 
         result = job_info._get_field_from_operation_or_api(op, 'index')
 
@@ -378,10 +399,37 @@ class TestJobInfoDestinationNodes:
             "kafka_cluster2:processed-type-b"
         }
         assert dest_ids == expected_ids
-        
+
         # Check that all destinations have correct connector type
         for dest in job_info.destinations:
             assert dest.connector_type == "KAFKA"
+
+    def test_op_fields_ignored_when_api_declared(self):
+        """v3: when _api_name is set, fields on the op itself are ignored"""
+        job_data = op_fields_ignored_when_api_declared_job()
+        job_info = JobInfo(job_data, self.logger)
+
+        # source comes from the api, not the stale op-level fields
+        assert job_info.source is not None
+        assert job_info.source.id == "kafka_real:real-topic"
+        assert job_info.source.connector_type == "KAFKA"
+
+        assert len(job_info.destinations) == 1
+        assert job_info.destinations[0].id == "kafka_out:out-topic"
+
+    def test_bare_operation_falls_back_to_op_fields(self):
+        """Operations without an _api_name read topic/connection directly"""
+        job_data = bare_operation_job()
+        job_info = JobInfo(job_data, self.logger)
+
+        assert job_info.source is not None
+        assert job_info.source.id == "kafka_bare:bare-topic"
+        assert job_info.source.connector_type == "KAFKA"
+
+        assert len(job_info.destinations) == 1
+        # elasticsearch_bulk without a connection defaults to 'default'
+        assert job_info.destinations[0].id == "default:bare-index"
+        assert job_info.destinations[0].connector_type == "ES"
 
 
 class TestJobInfoIntegration:
