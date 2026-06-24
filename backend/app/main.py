@@ -173,11 +173,17 @@ async def get_pipeline_graph():
         raise e
 
 def _read_app_version() -> str:
-    """Read the project version from pyproject.toml (the single source of truth).
+    """Determine the application version.
 
-    The path is resolved relative to this file so it does not depend on the
-    process working directory.
+    The GitHub release tag is the single source of truth: in built images the
+    version is injected via the ``APP_VERSION`` environment variable (set from
+    the release tag at Docker build time). For local development we fall back to
+    reading ``pyproject.toml`` relative to this file.
     """
+    env_version = os.environ.get("APP_VERSION")
+    if env_version:
+        return env_version
+
     pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
     try:
         with open(pyproject_path, "rb") as f:
