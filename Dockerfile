@@ -38,8 +38,13 @@ COPY --from=python-builder /backend/app /backend/app
 # Copy built frontend assets from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist /frontend/dist
 
-# Copy pyproject.toml so the app can read its version at runtime
+# Copy pyproject.toml so the app can read its version at runtime (dev-parity
+# fallback; the release tag drives the version via APP_VERSION below)
 COPY --from=python-builder /backend/pyproject.toml /backend/pyproject.toml
+
+# Bake the app version (from the GitHub release tag) into the image
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 
 WORKDIR /backend
 
