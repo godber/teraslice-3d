@@ -38,6 +38,9 @@ COPY --from=python-builder /backend/app /backend/app
 # Copy built frontend assets from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist /frontend/dist
 
+# Copy pyproject.toml so the app can read its version at runtime
+COPY --from=python-builder /backend/pyproject.toml /backend/pyproject.toml
+
 WORKDIR /backend
 
 # Run the application
