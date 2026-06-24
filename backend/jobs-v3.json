@@ -1,0 +1,326 @@
+[
+  {
+    "name": "noaa-isd-store-es-data3",
+    "assets": [
+      "kafka",
+      "elasticsearch",
+      "standard",
+      "aws-noaa-asset"
+    ],
+    "apis": [
+      {
+        "_name": "kafka_dead_letter",
+        "topic": "dead_letter",
+        "_connection": "kafka_data3"
+      },
+      {
+        "_name": "elasticsearch_sender_api",
+        "index": "noaa-isd-v5",
+        "type": "_doc",
+        "size": 20000
+      },
+      {
+        "_name": "kafka_reader_api",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_connection": "kafka_data3",
+        "topic": "prepared-noaa-isd-json-v1",
+        "group": "noaa-isd-prepared-store-es-data3-r1",
+        "size": 10000
+      }
+    ],
+    "lifecycle": "persistent",
+    "workers": 3,
+    "max_retries": 0,
+    "resources_requests_cpu": 0.1,
+    "resources_limits_cpu": 2,
+    "resources_requests_memory": 536870912,
+    "resources_limits_memory": 2147483648,
+    "operations": [
+      {
+        "_op": "kafka_reader",
+        "_api_name": "kafka_reader_api"
+      },
+      {
+        "_op": "date_guard",
+        "date_field": "date",
+        "limit_past": "3Y",
+        "limit_future": "2day"
+      },
+      {
+        "_op": "date_router",
+        "_dead_letter_action": "kafka_dead_letter",
+        "field": "date",
+        "resolution": "monthly",
+        "field_delimiter": ".",
+        "include_date_units": false
+      },
+      {
+        "_op": "routed_sender",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_api_name": "elasticsearch_sender_api",
+        "routing": {
+          "**": "es_data3"
+        },
+        "size": 20000,
+        "concurrency": 2
+      }
+    ],
+    "external_ports": [
+      {
+        "name": "metrics",
+        "port": 3333
+      }
+    ],
+    "job_id": "b9300ed8-b21d-4cc9-8c97-86a125abd110",
+    "_context": "job",
+    "_created": "2026-05-12T19:50:43.202Z",
+    "_updated": "2026-05-12T19:50:43.202Z",
+    "ex": {
+      "_status": "running"
+    }
+  },
+  {
+    "name": "noaa-isd-store-es-data2",
+    "assets": [
+      "kafka",
+      "elasticsearch",
+      "standard",
+      "aws-noaa-asset"
+    ],
+    "apis": [
+      {
+        "_name": "kafka_dead_letter",
+        "topic": "dead_letter",
+        "_connection": "kafka_data3"
+      },
+      {
+        "_name": "elasticsearch_sender_api",
+        "index": "noaa-isd-v5",
+        "type": "_doc",
+        "size": 20000
+      },
+      {
+        "_name": "kafka_reader_api",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_connection": "kafka_data3",
+        "topic": "prepared-noaa-isd-json-v1",
+        "group": "noaa-isd-prepared-store-es-data2-r1",
+        "size": 10000
+      }
+    ],
+    "lifecycle": "persistent",
+    "workers": 3,
+    "max_retries": 0,
+    "resources_requests_cpu": 0.1,
+    "resources_limits_cpu": 2,
+    "resources_requests_memory": 536870912,
+    "resources_limits_memory": 2147483648,
+    "operations": [
+      {
+        "_op": "kafka_reader",
+        "_api_name": "kafka_reader_api"
+      },
+      {
+        "_op": "date_guard",
+        "date_field": "date",
+        "limit_past": "3Y",
+        "limit_future": "2day"
+      },
+      {
+        "_op": "date_router",
+        "_dead_letter_action": "kafka_dead_letter",
+        "field": "date",
+        "resolution": "monthly",
+        "field_delimiter": ".",
+        "include_date_units": false
+      },
+      {
+        "_op": "routed_sender",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_api_name": "elasticsearch_sender_api",
+        "routing": {
+          "**": "es_data2"
+        },
+        "size": 20000,
+        "concurrency": 2
+      }
+    ],
+    "external_ports": [
+      {
+        "name": "metrics",
+        "port": 3333
+      }
+    ],
+    "job_id": "269d0b92-72e8-4fac-b7c6-b116a584910b",
+    "_context": "job",
+    "_created": "2026-05-12T19:48:42.858Z",
+    "_updated": "2026-05-12T19:48:42.858Z",
+    "ex": {
+      "_status": "running"
+    }
+  },
+  {
+    "name": "noaa-isd-store-es-data-os3",
+    "assets": [
+      "kafka",
+      "elasticsearch",
+      "standard",
+      "aws-noaa-asset"
+    ],
+    "apis": [
+      {
+        "_name": "kafka_dead_letter",
+        "topic": "dead_letter",
+        "_connection": "kafka_data3"
+      },
+      {
+        "_name": "elasticsearch_sender_api",
+        "index": "noaa-isd-v5",
+        "type": "_doc",
+        "size": 20000
+      },
+      {
+        "_name": "kafka_reader_api",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_connection": "kafka_data3",
+        "topic": "prepared-noaa-isd-json-v1",
+        "group": "noaa-isd-prepared-store-es-data-os3-r1",
+        "size": 10000
+      }
+    ],
+    "lifecycle": "persistent",
+    "workers": 3,
+    "max_retries": 0,
+    "resources_requests_cpu": 0.1,
+    "resources_limits_cpu": 2,
+    "resources_requests_memory": 536870912,
+    "resources_limits_memory": 2147483648,
+    "operations": [
+      {
+        "_op": "kafka_reader",
+        "_api_name": "kafka_reader_api"
+      },
+      {
+        "_op": "date_guard",
+        "date_field": "date",
+        "limit_past": "3Y",
+        "limit_future": "2day"
+      },
+      {
+        "_op": "date_router",
+        "_dead_letter_action": "kafka_dead_letter",
+        "field": "date",
+        "resolution": "monthly",
+        "field_delimiter": ".",
+        "include_date_units": false
+      },
+      {
+        "_op": "routed_sender",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_api_name": "elasticsearch_sender_api",
+        "routing": {
+          "**": "es_data_os3"
+        },
+        "size": 20000,
+        "concurrency": 2
+      }
+    ],
+    "external_ports": [
+      {
+        "name": "metrics",
+        "port": 3333
+      }
+    ],
+    "job_id": "d0734b75-f36d-4f3b-a034-64d7423feb53",
+    "_context": "job",
+    "_created": "2026-05-12T19:46:43.640Z",
+    "_updated": "2026-05-12T19:46:43.640Z",
+    "ex": {
+      "_status": "running"
+    }
+  },
+  {
+    "name": "noaa-isd-prepared-store-kafka",
+    "assets": [
+      "kafka",
+      "aws-noaa-asset"
+    ],
+    "apis": [
+      {
+        "_name": "kafka_reader_api",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_connection": "kafka_data3",
+        "_encoding": "raw",
+        "topic": "incoming-noaa-isd-csv-v1",
+        "group": "noaa-isd-generate-kafka-r2",
+        "size": 10000
+      },
+      {
+        "_name": "kafka_sender_api",
+        "_dead_letter_action": "kafka_dead_letter",
+        "_connection": "kafka_data3",
+        "topic": "prepared-noaa-isd-json-v1",
+        "size": 10000
+      },
+      {
+        "_name": "kafka_dead_letter",
+        "topic": "dead_letter",
+        "_connection": "kafka_data3"
+      }
+    ],
+    "lifecycle": "persistent",
+    "workers": 3,
+    "max_retries": 0,
+    "resources_requests_cpu": 0.1,
+    "resources_limits_cpu": 2,
+    "resources_requests_memory": 536870912,
+    "resources_limits_memory": 2147483648,
+    "operations": [
+      {
+        "_op": "kafka_reader",
+        "_api_name": "kafka_reader_api"
+      },
+      {
+        "_op": "noaa_csv_extract",
+        "_dead_letter_action": "kafka_dead_letter"
+      },
+      {
+        "_op": "noaa_field_parser",
+        "_dead_letter_action": "kafka_dead_letter"
+      },
+      {
+        "_op": "rekey",
+        "_dead_letter_action": "kafka_dead_letter",
+        "key_name": "_key",
+        "key_fields": [
+          "date",
+          "dew_point_temperature_c",
+          "name",
+          "location",
+          "slp_hPa",
+          "station_id",
+          "temperature_c",
+          "wind_direction_deg",
+          "wind_speed_m"
+        ]
+      },
+      {
+        "_op": "kafka_sender",
+        "_api_name": "kafka_sender_api"
+      }
+    ],
+    "external_ports": [
+      {
+        "name": "metrics",
+        "port": 3333
+      }
+    ],
+    "_created": "2026-05-12T19:34:32.961Z",
+    "job_id": "71e871d4-ad09-4012-8d60-8b0f288e5575",
+    "_context": "job",
+    "_updated": "2026-05-12T19:43:05.224Z",
+    "ex": {
+      "_status": "running"
+    }
+  }
+]
