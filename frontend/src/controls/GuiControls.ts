@@ -58,8 +58,38 @@ export class GuiControls {
       .name('Elasticsearch')
       .onChange(() => this.graphRenderer.updateNodeColors());
 
-    // Link colors
+    nodeFolder.addColor(colors, 'file')
+      .name('File Storage')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    nodeFolder.addColor(colors, 's3')
+      .name('S3 Bucket')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    nodeFolder.addColor(colors, 'dataGenerator')
+      .name('Data Generator')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    nodeFolder.addColor(colors, 'noop')
+      .name('No-Op Sink')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    nodeFolder.addColor(colors, 'stdout')
+      .name('STDOUT Sink')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    nodeFolder.addColor(colors, 'other')
+      .name('Other')
+      .onChange(() => this.graphRenderer.updateNodeColors());
+
+    // Link colors & animations
     const linkFolder = colorFolder.addFolder('Links');
+
+    const particleState = { particles: this.graphRenderer.getDirectionalParticles() };
+    linkFolder.add(particleState, 'particles')
+      .name('Flow Particles')
+      .onChange(value => this.graphRenderer.setDirectionalParticles(value));
+
     linkFolder.addColor(colors, 'linkRunning')
       .name('Running')
       .onChange(() => this.graphRenderer.updateLinkColors());
