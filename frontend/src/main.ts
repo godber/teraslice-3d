@@ -38,8 +38,8 @@ async function initializeApp(): Promise<void> {
   
   // Initialize auto-refresh
   const autoRefresh = new AutoRefresh((newData) => {
-    graphFilters.setOriginalData(newData);
-    graphRenderer.updateData(newData);
+    const reconciledData = graphRenderer.updateData(newData);
+    graphFilters.setOriginalData(reconciledData);
     // Re-apply the active filter to the refreshed data so the graph and
     // jobs table stay in sync with the current search term.
     graphFilters.filterGraphData(graphFilters.getFilterState().searchTerm);

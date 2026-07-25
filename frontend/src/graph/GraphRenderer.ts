@@ -21,6 +21,7 @@ export class GraphRenderer {
     this.edgePopover = new EdgePopover();
     this.nodePopover = new NodePopover();
     this.init();
+    this.setupVisibilityListener();
   }
 
   private init(): void {
@@ -72,6 +73,26 @@ export class GraphRenderer {
     }, 100);
   }
 
+  private setupVisibilityListener(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (!this.graph) return;
+
+      if (document.hidden) {
+        // Pause 3D animation loop when tab is hidden to save CPU/GPU resources
+        this.graph.pauseAnimation();
+      } else {
+        // Resume 3D animation loop when returning to tab
+        this.graph.resumeAnimation();
+      }
+    });
+  }
+
+  public reheat(): void {
+    if (this.graph) {
+      this.graph.d3ReheatSimulation();
+    }
+  }
+
   public getGraph(): any {
     return this.graph;
   }
@@ -106,18 +127,156 @@ export class GraphRenderer {
     this.graph.graphData(data);
   }
 
+  private copyLinkProperties(existingLink: any, newLink: any): void {
+    // Preserve existingLink.source and existingLink.target (which 3d-force-graph resolved to Node objects)
+    const savedSource = existingLink.source;
+    const savedTarget = existingLink.target;
+    Object.assign(existingLink, newLink);
+    existingLink.source = savedSource;
+    existingLink.target = savedTarget;
+  }
+
   /**
-   * Update the graph data with new data.
-   * This method checks if the new data is different from the current data
-   * before updating to avoid unnecessary re-renders.
-   * @param {Object} newData - The new graph data to update.
+   * Reconcile new graph data against existing graph data to preserve 3D positions
+   * (x, y, z, vx, vy, vz) and object references. This prevents the graph from collapsing
+   * or resetting node positions on auto-refresh updates.
    */
-  public updateData(newData: GraphData): void {
-    // Only update if the data has actually changed
+  public reconcileGraphData(currentData: GraphData | null, newData: GraphData): GraphData {
+    if (!currentData || !currentData.nodes || currentData.nodes.length === 0) {
+      return newData;
+    }
+
+    const existingNodeMap = new Map<string, any>();
+    currentData.nodes.forEach((node: any) => {
+      if (node && node.id !== undefined) {
+        existingNodeMap.set(String(node.id), node);
+      }
+    });
+
+    const reconciledNodes = newData.nodes.map((newNode: any) => {
+      const existingNode = existingNodeMap.get(String(newNode.id));
+      if (existingNode) {
+        Object.assign(existingNode, newNode);
+        return existingNode;
+      }
+      return newNode;
+    });
+
+    const existingLinkMap = new Map<string, any>();
+    currentData.links.forEach((link: any) => {
+      const srcId = typeof link.source === 'object' ? link.source.id : link.source;
+      const tgtId = typeof link.target === 'object' ? link.target.id : link.target;
+      const key = `${srcId}_${tgtId}_${link.job_id || ''}`;
+      existingLinkMap.set(key, link);
+    });
+
+    const reconciledLinks = newData.links.map((newLink: any) => {
+      const srcId = typeof newLink.source === 'object' ? newLink.source.id : newLink.source;
+      const tgtId = typeof newLink.target === 'object' ? newLink.target.id : newLink.target;
+      const key = `${srcId}_${tgtId}_${newLink.job_id || ''}`;
+      const existingLink = existingLinkMap.get(key);
+
+      if (existingLink) {
+        this.copyLinkProperties(existingLink, newLink);
+        return existingLink;
+      }
+      return newLink;
+    });
+
+    return {
+      nodes: reconciledNodes,
+      links: reconciledLinks
+    };
+  }
+
+  private hasTopologyChanged(currentData: GraphData | null, newData: GraphData): boolean {
+    if (!currentData || !newData) return true;
+    if (!currentData.nodes || !currentData.links) return true;
+
+    if (currentData.nodes.length !== newData.nodes.length) return true;
+    if (currentData.links.length !== newData.links.length) return true;
+
+    const currentNodeIds = new Set(currentData.nodes.map((n: any) => n.id));
+    for (const n of newData.nodes) {
+      if (!currentNodeIds.has(n.id)) return true;
+    }
+
+    const getLinkKey = (l: any) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source;
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+      return `${src}_${tgt}_${l.job_id || ''}`;
+    };
+
+    const currentLinkKeys = new Set(currentData.links.map(getLinkKey));
+    for (const l of newData.links) {
+      if (!currentLinkKeys.has(getLinkKey(l))) return true;
+    }
+
+    return false;
+  }
+
+  private updatePropertiesInPlace(currentData: GraphData, newData: GraphData): void {
+    const nodeMap = new Map<string, any>();
+    currentData.nodes.forEach((n: any) => nodeMap.set(String(n.id), n));
+    newData.nodes.forEach((newNode: any) => {
+      const existing = nodeMap.get(String(newNode.id));
+      if (existing) {
+        Object.assign(existing, newNode);
+      }
+    });
+
+    const getLinkKey = (l: any) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source;
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+      return `${src}_${tgt}_${l.job_id || ''}`;
+    };
+
+    const linkMap = new Map<string, any>();
+    currentData.links.forEach((l: any) => linkMap.set(getLinkKey(l), l));
+    newData.links.forEach((newLink: any) => {
+      const existing = linkMap.get(getLinkKey(newLink));
+      if (existing) {
+        this.copyLinkProperties(existing, newLink);
+      }
+    });
+  }
+
+  /**
+   * Update the graph data with new data using position-preserving reconciliation.
+   * Prevents graph expansion/creep by updating properties in-place when topology is unchanged.
+   * @param {GraphData} newData - The new graph data to update.
+   * @returns {GraphData} - The reconciled graph data.
+   */
+  public updateData(newData: GraphData): GraphData {
     const currentData = this.graph.graphData();
-    if (this.hasDataChanged(currentData, newData)) {
+    if (!currentData || !currentData.nodes || currentData.nodes.length === 0) {
       this.graph.graphData(newData);
-      console.log('Graph data updated');
+      return newData;
+    }
+
+    if (!this.hasDataChanged(currentData, newData)) {
+      return currentData;
+    }
+
+    if (!this.hasTopologyChanged(currentData, newData)) {
+      // Topology is identical (only properties like status/workers changed):
+      // Update properties in-place without calling graphData() to prevent force expansion creep.
+      this.updatePropertiesInPlace(currentData, newData);
+      this.graph.refresh();
+      console.log('Graph data properties updated in-place (no layout shift)');
+      return currentData;
+    } else {
+      // Topology changed (added/removed nodes or links): Reconcile and update graphData
+      const reconciled = this.reconcileGraphData(currentData, newData);
+      // Reset velocity on existing nodes so leftover momentum doesn't cause drift
+      reconciled.nodes.forEach((n: any) => {
+        n.vx = 0;
+        n.vy = 0;
+        n.vz = 0;
+      });
+      this.graph.graphData(reconciled);
+      console.log('Graph topology updated with position reconciliation');
+      return reconciled;
     }
   }
 
