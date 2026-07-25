@@ -7,6 +7,7 @@ export interface GraphNode {
 
 export interface GraphLink {
   id?: string;
+  job_id?: string;
   source: string | GraphNode;
   target: string | GraphNode;
   name: string;

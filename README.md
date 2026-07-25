@@ -30,9 +30,6 @@ If you don't have `uv` installed:
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### Initial Setup
@@ -190,4 +187,6 @@ All releases are published to GitHub Container Registry:
 
 ### Version Numbering
 
-This project follows semantic versioning with the format `v0.0.x` during early development. Version numbers are managed through Git tags only - no manual version bumping in code is required.
+This project follows semantic versioning with the format `v0.0.x` during early
+development. Version numbers are managed through Git tags only - no manual
+version bumping in code is required.

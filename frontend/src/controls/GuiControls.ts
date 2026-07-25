@@ -27,7 +27,6 @@ export class GuiControls {
 
   private init(): void {
     this.gui = new GUI({title: "Teraslice 3D Graph Controls"});
-    this.setupFilterControls();
     this.setupColorControls();
     this.setupHighlightControls();
     this.setupAutoRefreshControls();
@@ -91,35 +90,6 @@ export class GuiControls {
       .onChange(() => this.graphRenderer.updateBackgroundColor());
 
     colorFolder.close();
-  }
-
-  private setupFilterControls(): void {
-    const filterFolder = this.gui!.addFolder('Filtering');
-    const filterState = this.graphFilters.getFilterState();
-
-    // Add filter mode selection
-    filterFolder.add(filterState, 'filterMode', ['Remove', 'Highlight'])
-      .name('Filter Mode')
-      .onChange(value => {
-        this.graphFilters.setFilterMode(value);
-        // Re-apply current filter with new mode
-        this.graphFilters.filterGraphData(filterState.searchTerm);
-      });
-
-    const searchController = filterFolder.add(filterState, 'searchTerm')
-      .name('Search')
-      .onChange(value => {
-        this.graphFilters.filterGraphData(value);
-      });
-
-    filterFolder.add({
-      clear: () => {
-        this.graphFilters.clearFilters();
-        searchController.updateDisplay();
-      }
-    }, 'clear').name('Clear All Filters');
-
-    filterFolder.open();
   }
 
   private setupHighlightControls(): void {
