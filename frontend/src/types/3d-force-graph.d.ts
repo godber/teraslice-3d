@@ -37,6 +37,10 @@ declare module '3d-force-graph' {
     
     // Event handlers
     onLinkClick(callback: (link: ForceGraphLink) => void): this;
+    onLinkHover(callback: (link: ForceGraphLink | null, previousLink: ForceGraphLink | null) => void): this;
+    linkHoverPrecision(precision: number): this;
+    onNodeClick(callback: (node: ForceGraphNode) => void): this;
+    onNodeHover(callback: (node: ForceGraphNode | null, previousNode: ForceGraphNode | null) => void): this;
     
     // Data methods
     graphData(): ForceGraphData;

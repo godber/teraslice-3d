@@ -3,31 +3,60 @@ import { getNodeColor, getLinkColor, colors } from './GraphColors.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
 import { GraphData, OutlineSettings } from '../types/graph.js';
+import { EdgePopover } from '../controls/EdgePopover.js';
+import { NodePopover } from '../controls/NodePopover.js';
 
 export class GraphRenderer {
   private element: HTMLElement;
   private graph: any; // ForceGraph3D instance
   private outlinePass: OutlinePass | null;
+  private edgePopover: EdgePopover;
+  private nodePopover: NodePopover;
 
   constructor(element: HTMLElement) {
     this.element = element;
     this.graph = null;
     this.outlinePass = null;
+    this.edgePopover = new EdgePopover();
+    this.nodePopover = new NodePopover();
     this.init();
   }
 
   private init(): void {
     this.graph = new ForceGraph3D(this.element)
       .nodeColor(getNodeColor)
-      .nodeLabel(node => `${node.id}`)
-      .linkLabel(link => `${link.name} - ${link.workers} workers - ${link.status}`)
       .linkWidth(link => {
         // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
         const newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1;
         return newSize;
       })
       .linkColor(getLinkColor)
-      .onLinkClick(link => window.open(`${link.url}`, '_blank'));
+      .onLinkHover(link => {
+        if (link) {
+          this.edgePopover.show(link);
+        } else {
+          this.edgePopover.hide(250);
+        }
+      })
+      .onLinkClick(link => {
+        if (link) {
+          this.edgePopover.show(link);
+        }
+      })
+      .onNodeHover(node => {
+        if (node) {
+          const links = this.graph.graphData()?.links || [];
+          this.nodePopover.show(node, links);
+        } else {
+          this.nodePopover.hide(250);
+        }
+      })
+      .onNodeClick(node => {
+        if (node) {
+          const links = this.graph.graphData()?.links || [];
+          this.nodePopover.show(node, links);
+        }
+      });
 
     // Setup outline pass after graph initialization
     setTimeout(() => {
