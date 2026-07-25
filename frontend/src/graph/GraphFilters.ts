@@ -149,8 +149,11 @@ export class GraphFilters {
     this.filterState.searchTerm = searchTerm;
 
     if (!searchTerm) {
-      // Clear all filters
-      this.graph.graphData(this.originalData);
+      // Clear all filters; restore original data only if graph was filtered
+      const currentData = this.graph.graphData();
+      if (!currentData || currentData.nodes?.length !== this.originalData.nodes?.length || currentData.links?.length !== this.originalData.links?.length) {
+        this.graph.graphData(this.originalData);
+      }
       if (this.graphRenderer) {
         this.graphRenderer.clearHighlights();
       }
@@ -179,8 +182,11 @@ export class GraphFilters {
   }
 
   private applyHighlightMode(searchTerm: string): void {
-    // Keep all original data visible
-    this.graph.graphData(this.originalData!);
+    // Keep all original data visible; only re-set graphData if it was previously reduced/filtered
+    const currentData = this.graph.graphData();
+    if (!currentData || currentData.nodes?.length !== this.originalData!.nodes?.length || currentData.links?.length !== this.originalData!.links?.length) {
+      this.graph.graphData(this.originalData!);
+    }
 
     if (!this.graphRenderer) {
       console.warn('GraphRenderer not available for highlight mode');

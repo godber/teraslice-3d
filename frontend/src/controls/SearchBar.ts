@@ -29,8 +29,12 @@ export class SearchBar {
     this.searchInput.className = 'search-bar__input';
     this.searchInput.placeholder = 'Search jobs…';
     this.searchInput.value = filterState.searchTerm;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     this.searchInput.addEventListener('input', () => {
-      this.graphFilters.filterGraphData(this.searchInput.value);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        this.graphFilters.filterGraphData(this.searchInput.value);
+      }, 150);
     });
 
     // Filter mode select
