@@ -24,10 +24,24 @@ export class AutoRefresh {
     // Load settings from localStorage
     this.loadSettings();
     
+    // Setup visibility change listener
+    this.setupVisibilityListener();
+    
     // Start if enabled
     if (this.enabled) {
       this.start();
     }
+  }
+
+  private setupVisibilityListener(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.enabled) {
+        if (this.lastUpdateTime && (Date.now() - this.lastUpdateTime.getTime() >= this.interval)) {
+          console.log('Tab became visible and auto-refresh is overdue. Refreshing data...');
+          this.refreshData();
+        }
+      }
+    });
   }
   
   private loadSettings(): void {
