@@ -1,0 +1,359 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0E0570B0BE22475DB0E44AA0 /* Sources/RealityKit/NodeEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2FA45454804ACEAB2C6D41 /* Sources/RealityKit/NodeEntity.swift */; };
+		16F1133AF6004F8093B38DFD /* Sources/Views/JobsInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7FC9EB58744E0FB50812D2 /* Sources/Views/JobsInspectorView.swift */; };
+		3E063EBDD1FA4070984449E1 /* Sources/App/AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 375128DDE53642188BDE25B1 /* Sources/App/AppState.swift */; };
+		4767071A1C1B4104B00E0286 /* Sources/Models/ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCF332E5D2B419F82311438 /* Sources/Models/ServerConfig.swift */; };
+		52E311944ABB4D6885370B0A /* Sources/Models/JobDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC5E5E5636D4CF2B4BC8DF6 /* Sources/Models/JobDetails.swift */; };
+		55A7F10CD24848B6B790F86B /* Sources/Views/ControlOrnamentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6924043EC5B45F9B087E1C7 /* Sources/Views/ControlOrnamentView.swift */; };
+		7BA14AC7357D4488AAC04219 /* Sources/Models/MockGraphProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F2CB3D829C84D8EBFF22BDA /* Sources/Models/MockGraphProvider.swift */; };
+		9BF82361C519428C8CDCB5D2 /* Sources/RealityKit/LinkEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D15111A58C4D56A7A26C5C /* Sources/RealityKit/LinkEntity.swift */; };
+		A9C54F08A5D44BCEA435F6AD /* Sources/Models/GraphData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E3A0D29363455185FDF066 /* Sources/Models/GraphData.swift */; };
+		B1506F0EDDE04AB1892A805A /* Sources/Services/TerasliceAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B2792080D44E0B5541520 /* Sources/Services/TerasliceAPIClient.swift */; };
+		B4F0CDD489604DBD8B706C44 /* Sources/Views/PipelineVolumeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E6BB2247964376A62C0C92 /* Sources/Views/PipelineVolumeView.swift */; };
+		BA1E4F29CEF64765B738C5F7 /* Sources/Views/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216D5A55555247C899EFB440 /* Sources/Views/SettingsView.swift */; };
+		BB213AFEF1CF4397AB1E3936 /* Sources/Services/ForceSimulation3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815184CC6FB840A98548CB5B /* Sources/Services/ForceSimulation3D.swift */; };
+		CC0792D8B1C3484BB2971076 /* Sources/RealityKit/PipelineGraphEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA55BF6844884E6AB720F956 /* Sources/RealityKit/PipelineGraphEntity.swift */; };
+		E7DF3AE09DC54E3681FA6932 /* Sources/App/Teraslice3DApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE9ED154D214245B4D5F412 /* Sources/App/Teraslice3DApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		07E3A0D29363455185FDF066 /* Sources/Models/GraphData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Models/GraphData.swift; sourceTree = "<group>"; };
+		12D15111A58C4D56A7A26C5C /* Sources/RealityKit/LinkEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RealityKit/LinkEntity.swift; sourceTree = "<group>"; };
+		216D5A55555247C899EFB440 /* Sources/Views/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Views/SettingsView.swift; sourceTree = "<group>"; };
+		34E6BB2247964376A62C0C92 /* Sources/Views/PipelineVolumeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Views/PipelineVolumeView.swift; sourceTree = "<group>"; };
+		375128DDE53642188BDE25B1 /* Sources/App/AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/AppState.swift; sourceTree = "<group>"; };
+		3B2FA45454804ACEAB2C6D41 /* Sources/RealityKit/NodeEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RealityKit/NodeEntity.swift; sourceTree = "<group>"; };
+		3FCF332E5D2B419F82311438 /* Sources/Models/ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Models/ServerConfig.swift; sourceTree = "<group>"; };
+		5BC5E5E5636D4CF2B4BC8DF6 /* Sources/Models/JobDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Models/JobDetails.swift; sourceTree = "<group>"; };
+		6CAC1A1DC6FD423C8472DF94 /* Teraslice3D.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Teraslice3D.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6F2CB3D829C84D8EBFF22BDA /* Sources/Models/MockGraphProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Models/MockGraphProvider.swift; sourceTree = "<group>"; };
+		815184CC6FB840A98548CB5B /* Sources/Services/ForceSimulation3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Services/ForceSimulation3D.swift; sourceTree = "<group>"; };
+		894B2792080D44E0B5541520 /* Sources/Services/TerasliceAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Services/TerasliceAPIClient.swift; sourceTree = "<group>"; };
+		B6924043EC5B45F9B087E1C7 /* Sources/Views/ControlOrnamentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Views/ControlOrnamentView.swift; sourceTree = "<group>"; };
+		CA55BF6844884E6AB720F956 /* Sources/RealityKit/PipelineGraphEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/RealityKit/PipelineGraphEntity.swift; sourceTree = "<group>"; };
+		ED7FC9EB58744E0FB50812D2 /* Sources/Views/JobsInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Views/JobsInspectorView.swift; sourceTree = "<group>"; };
+		EEE9ED154D214245B4D5F412 /* Sources/App/Teraslice3DApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/Teraslice3DApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		21CE6D25A5364B1DACE4001D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		47AAE84F330A481FAB195B7C = {
+			isa = PBXGroup;
+			children = (
+				4BE7BF97DE4B412F86CFC74E,
+				749D3266C6E74EC59699EC81 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4BE7BF97DE4B412F86CFC74E = {
+			isa = PBXGroup;
+			children = (
+				375128DDE53642188BDE25B1 /* Sources/App/AppState.swift */,
+				EEE9ED154D214245B4D5F412 /* Sources/App/Teraslice3DApp.swift */,
+				07E3A0D29363455185FDF066 /* Sources/Models/GraphData.swift */,
+				5BC5E5E5636D4CF2B4BC8DF6 /* Sources/Models/JobDetails.swift */,
+				6F2CB3D829C84D8EBFF22BDA /* Sources/Models/MockGraphProvider.swift */,
+				3FCF332E5D2B419F82311438 /* Sources/Models/ServerConfig.swift */,
+				894B2792080D44E0B5541520 /* Sources/Services/TerasliceAPIClient.swift */,
+				815184CC6FB840A98548CB5B /* Sources/Services/ForceSimulation3D.swift */,
+				3B2FA45454804ACEAB2C6D41 /* Sources/RealityKit/NodeEntity.swift */,
+				12D15111A58C4D56A7A26C5C /* Sources/RealityKit/LinkEntity.swift */,
+				CA55BF6844884E6AB720F956 /* Sources/RealityKit/PipelineGraphEntity.swift */,
+				B6924043EC5B45F9B087E1C7 /* Sources/Views/ControlOrnamentView.swift */,
+				ED7FC9EB58744E0FB50812D2 /* Sources/Views/JobsInspectorView.swift */,
+				34E6BB2247964376A62C0C92 /* Sources/Views/PipelineVolumeView.swift */,
+				216D5A55555247C899EFB440 /* Sources/Views/SettingsView.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		749D3266C6E74EC59699EC81 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6CAC1A1DC6FD423C8472DF94 /* Teraslice3D.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3DCDA40773A140F1980948EE /* Teraslice3D */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D240FBDE0B37464083961ED6 /* Build configuration list for PBXNativeTarget "Teraslice3D" */;
+			buildPhases = (
+				B52FA8641EFC47BF89E94AF4 /* Sources */,
+				21CE6D25A5364B1DACE4001D /* Frameworks */,
+				47C06EBBB5914ED1ACF9CD07 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Teraslice3D;
+			productName = Teraslice3D;
+			productReference = 6CAC1A1DC6FD423C8472DF94 /* Teraslice3D.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FB5F24B59B0D4EE6BCB8F585 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					3DCDA40773A140F1980948EE = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = D7E55F6DE64E46E9AF1D227D /* Build configuration list for PBXProject "Teraslice3D" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 47AAE84F330A481FAB195B7C;
+			productRefGroup = 749D3266C6E74EC59699EC81 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3DCDA40773A140F1980948EE /* Teraslice3D */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		47C06EBBB5914ED1ACF9CD07 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B52FA8641EFC47BF89E94AF4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E063EBDD1FA4070984449E1 /* Sources/App/AppState.swift in Sources */,
+				E7DF3AE09DC54E3681FA6932 /* Sources/App/Teraslice3DApp.swift in Sources */,
+				A9C54F08A5D44BCEA435F6AD /* Sources/Models/GraphData.swift in Sources */,
+				52E311944ABB4D6885370B0A /* Sources/Models/JobDetails.swift in Sources */,
+				7BA14AC7357D4488AAC04219 /* Sources/Models/MockGraphProvider.swift in Sources */,
+				4767071A1C1B4104B00E0286 /* Sources/Models/ServerConfig.swift in Sources */,
+				B1506F0EDDE04AB1892A805A /* Sources/Services/TerasliceAPIClient.swift in Sources */,
+				BB213AFEF1CF4397AB1E3936 /* Sources/Services/ForceSimulation3D.swift in Sources */,
+				0E0570B0BE22475DB0E44AA0 /* Sources/RealityKit/NodeEntity.swift in Sources */,
+				9BF82361C519428C8CDCB5D2 /* Sources/RealityKit/LinkEntity.swift in Sources */,
+				CC0792D8B1C3484BB2971076 /* Sources/RealityKit/PipelineGraphEntity.swift in Sources */,
+				55A7F10CD24848B6B790F86B /* Sources/Views/ControlOrnamentView.swift in Sources */,
+				16F1133AF6004F8093B38DFD /* Sources/Views/JobsInspectorView.swift in Sources */,
+				B4F0CDD489604DBD8B706C44 /* Sources/Views/PipelineVolumeView.swift in Sources */,
+				BA1E4F29CEF64765B738C5F7 /* Sources/Views/SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		115ACB5989F74CAD91201265 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				GENERATE_INFOPLIST_KEY_UIApplicationPreferredDefaultSceneSessionRole = UISceneSessionRoleVolumetricApplication;
+				GENERATE_INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				GENERATE_INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.teraslice.Teraslice3D;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		552836BCB35C4EFDBA78DCE4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_FAST_MATH = YES;
+				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 2.0;
+			};
+			name = Release;
+		};
+		94F28CC3743E4F6AB7F77E42 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = xros;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 2.0;
+			};
+			name = Debug;
+		};
+		CA1651BEA98E42D8A8F5E622 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				GENERATE_INFOPLIST_KEY_UIApplicationPreferredDefaultSceneSessionRole = UISceneSessionRoleVolumetricApplication;
+				GENERATE_INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				GENERATE_INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.teraslice.Teraslice3D;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D240FBDE0B37464083961ED6 /* Build configuration list for PBXNativeTarget "Teraslice3D" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA1651BEA98E42D8A8F5E622 /* Debug */,
+				115ACB5989F74CAD91201265 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D7E55F6DE64E46E9AF1D227D /* Build configuration list for PBXProject "Teraslice3D" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94F28CC3743E4F6AB7F77E42 /* Debug */,
+				552836BCB35C4EFDBA78DCE4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FB5F24B59B0D4EE6BCB8F585 /* Project object */;
+}

@@ -6,3 +6,12 @@ frontend/dist
 *.pyo
 *.pyd
 *_output.log
+
+# Swift / Xcode Build Artifacts
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
