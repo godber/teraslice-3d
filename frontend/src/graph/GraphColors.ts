@@ -24,6 +24,16 @@ export function getNodeColor(node: GraphNode): string {
   }
 }
 
+export function getNodeType(node: GraphNode): string {
+  if (node.id.startsWith("kafka")) {
+    if (node.id.includes("incoming")) {
+      return "Kafka (incoming)";
+    }
+    return "Kafka";
+  }
+  return "Elasticsearch";
+}
+
 export function getLinkColor(link: GraphLink): string {
   if (link.status == 'running') return colors.linkRunning;
   else if (link.status == 'starting') return colors.linkStarting;

@@ -1,5 +1,5 @@
-body { 
-  margin: 0; 
+body {
+  margin: 0;
 }
 
 #version-info {
@@ -8,4 +8,212 @@ body {
   left: 10px;
   color: white;
   font-family: sans-serif;
+  z-index: 10;
+}
+
+/* Bottom-center search bar */
+.search-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid #2c2c2c;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  font-family: sans-serif;
+  font-size: 13px;
+  z-index: 100;
+}
+
+.search-bar__input {
+  width: 280px;
+  padding: 6px 10px;
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 5px;
+  font-size: 13px;
+  outline: none;
+}
+
+.search-bar__input::placeholder {
+  color: #888;
+}
+
+.search-bar__input:focus {
+  border-color: #5a8dee;
+}
+
+.search-bar__select,
+.search-bar__button {
+  padding: 6px 10px;
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.search-bar__button:hover,
+.search-bar__select:hover {
+  background: #383838;
+}
+
+/* Jobs table drawer (slides up from the bottom, above the search bar) */
+.jobs-table-drawer {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%) translateY(calc(100% + 96px));
+  /* Grow to fit the content (wide tables on large windows) but stay between a
+     comfortable minimum and the viewport width. */
+  width: fit-content;
+  min-width: min(900px, 92vw);
+  max-width: 92vw;
+  max-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid #2c2c2c;
+  border-radius: 8px;
+  box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.6);
+  font-family: sans-serif;
+  color: #eee;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  z-index: 99;
+}
+
+.jobs-table-drawer--open {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.jobs-table-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.jobs-table-drawer__tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.jobs-table-drawer__tab {
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #aaa;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jobs-table-drawer__tab:hover {
+  color: #fff;
+}
+
+.jobs-table-drawer__tab--active {
+  color: #fff;
+  border-bottom-color: #5a8dee;
+}
+
+.jobs-table-drawer__count {
+  color: #999;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.jobs-table-drawer__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.jobs-table-drawer__close:hover {
+  background: #383838;
+  color: #fff;
+}
+
+.jobs-table-drawer__scroll {
+  overflow: auto;
+  display: grid;
+  /* Track follows the widest table's content so the drawer (fit-content) can
+     grow on large windows; capped by the drawer's max-width, beyond which this
+     scrolls horizontally. */
+  grid-template-columns: max-content;
+}
+
+.jobs-table {
+  /* The max-content grid track is sized from the cell content, so width:100%
+     fills that track without a percentage/min-width rounding loop (which left a
+     phantom 1px horizontal scroll). */
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  /* Stack both tables in the same grid cell so the drawer height matches the
+     taller table regardless of which tab is active. align-self keeps the
+     shorter table at its natural row height instead of stretching to fill. */
+  grid-area: 1 / 1;
+  align-self: start;
+}
+
+.jobs-table--hidden {
+  visibility: hidden;
+}
+
+.jobs-table th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  padding: 8px 14px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #2c2c2c;
+  font-weight: 600;
+}
+
+.jobs-table td {
+  padding: 7px 14px;
+  border-bottom: 1px solid #242424;
+  white-space: nowrap;
+}
+
+.jobs-table__row {
+  cursor: pointer;
+}
+
+.jobs-table__row:hover {
+  background: #2a2a2a;
+}
+
+.jobs-table__status-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
+.jobs-table__empty {
+  text-align: center;
+  color: #888;
+  padding: 20px;
 }

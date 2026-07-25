@@ -30,9 +30,6 @@ If you don't have `uv` installed:
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### Initial Setup

@@ -1,6 +1,8 @@
 import { GraphRenderer } from './graph/GraphRenderer.js';
 import { GraphFilters } from './graph/GraphFilters.js';
 import { GuiControls } from './controls/GuiControls.js';
+import { SearchBar } from './controls/SearchBar.js';
+import { JobsTable } from './controls/JobsTable.js';
 import { loadGraphData, fetchVersion } from './utils/api.js';
 import { AutoRefresh } from './utils/autoRefresh.js';
 import './style.css';
@@ -38,10 +40,17 @@ async function initializeApp(): Promise<void> {
   const autoRefresh = new AutoRefresh((newData) => {
     graphFilters.setOriginalData(newData);
     graphRenderer.updateData(newData);
+    // Re-apply the active filter to the refreshed data so the graph and
+    // jobs table stay in sync with the current search term.
+    graphFilters.filterGraphData(graphFilters.getFilterState().searchTerm);
   });
-  
+
   // Initialize GUI controls with auto-refresh
   new GuiControls(graphRenderer, graphFilters, autoRefresh);
+
+  // Bottom search bar + jobs table drawer
+  const jobsTable = new JobsTable(graphFilters);
+  new SearchBar(graphFilters, jobsTable);
   
   // Load and display graph data
   try {
