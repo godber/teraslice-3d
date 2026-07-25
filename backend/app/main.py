@@ -31,6 +31,9 @@ log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
+if settings.cacert_file:
+    logger.info(f"Using custom CA certificate: {settings.cacert_file}")
+
 app = FastAPI()
 
 # Initialize cache manager
@@ -56,7 +59,6 @@ async def _fetch_jobs_from_api(size: None | int = 500, active: None | str = 'tru
     if settings.cacert_file:
         ssl_context = ssl.create_default_context(cafile=str(settings.cacert_file))
         verify_ssl = ssl_context
-        logger.info(f"Using custom CA certificate: {settings.cacert_file}")
     else:
         verify_ssl = True
 
