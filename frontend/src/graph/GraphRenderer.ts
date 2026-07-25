@@ -12,6 +12,7 @@ export class GraphRenderer {
   private outlinePass: OutlinePass | null;
   private edgePopover: EdgePopover;
   private nodePopover: NodePopover;
+  private showParticles: boolean = false;
 
   constructor(element: HTMLElement) {
     this.element = element;
@@ -25,12 +26,18 @@ export class GraphRenderer {
   private init(): void {
     this.graph = new ForceGraph3D(this.element)
       .nodeColor(getNodeColor)
+      .nodeRelSize(6)
+      .nodeOpacity(0.95)
       .linkWidth(link => {
         // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
         const newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1;
         return newSize;
       })
       .linkColor(getLinkColor)
+      .linkOpacity(0.75)
+      .linkDirectionalParticles(0)
+      .linkDirectionalParticleWidth(2.5)
+      .linkDirectionalParticleSpeed(link => link.status === 'running' ? 0.005 : 0.002)
       .onLinkHover(link => {
         if (link) {
           this.edgePopover.show(link);
@@ -75,6 +82,17 @@ export class GraphRenderer {
 
   public updateLinkColors(): void {
     this.graph.linkColor(getLinkColor);
+  }
+
+  public setDirectionalParticles(enabled: boolean): void {
+    this.showParticles = enabled;
+    if (this.graph) {
+      this.graph.linkDirectionalParticles(enabled ? 2 : 0);
+    }
+  }
+
+  public getDirectionalParticles(): boolean {
+    return this.showParticles;
   }
 
   public updateBackgroundColor(): void {

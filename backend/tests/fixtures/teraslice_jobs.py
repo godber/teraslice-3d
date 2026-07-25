@@ -208,8 +208,7 @@ def unknown_source_job():
         "ex": {"_status": "running"},
         "operations": [
             {
-                "_op": "file_reader",
-                "path": "/data/input.csv"
+                "_op": "custom_mystery_reader"
             },
             {
                 "_op": "elasticsearch_bulk",
@@ -239,8 +238,7 @@ def unknown_destination_job():
                 "_api_name": "kafka_reader_api"
             },
             {
-                "_op": "file_writer",
-                "path": "/data/output.json"
+                "_op": "custom_mystery_exporter"
             }
         ],
         "apis": [
@@ -250,6 +248,79 @@ def unknown_destination_job():
                 "topic": "input-data"
             }
         ]
+    }
+
+
+def file_reader_to_file_exporter_job():
+    """file_reader -> file_exporter job"""
+    return {
+        "job_id": "file-to-file-001",
+        "name": "file-pipeline",
+        "workers": 2,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "file_reader",
+                "path": "/var/data/input"
+            },
+            {
+                "_op": "file_exporter",
+                "path": "/var/data/output"
+            }
+        ],
+        "apis": []
+    }
+
+
+def s3_reader_to_s3_exporter_job():
+    """s3_reader -> s3_exporter job with APIs"""
+    return {
+        "job_id": "s3-to-s3-001",
+        "name": "s3-pipeline",
+        "workers": 4,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "s3_reader",
+                "_api_name": "s3_reader_api"
+            },
+            {
+                "_op": "s3_exporter",
+                "_api_name": "s3_sender_api"
+            }
+        ],
+        "apis": [
+            {
+                "_name": "s3_reader_api",
+                "_connection": "s3_conn",
+                "bucket": "my-in-bucket",
+                "prefix": "raw/"
+            },
+            {
+                "_name": "s3_sender_api",
+                "_connection": "s3_conn",
+                "bucket": "my-out-bucket"
+            }
+        ]
+    }
+
+
+def noop_and_stdout_job():
+    """data_generator -> noop & stdout jobs"""
+    return {
+        "job_id": "gen-to-noop-001",
+        "name": "generator-pipeline",
+        "workers": 1,
+        "ex": {"_status": "running"},
+        "operations": [
+            {
+                "_op": "data_generator"
+            },
+            {
+                "_op": "noop"
+            }
+        ],
+        "apis": []
     }
 
 

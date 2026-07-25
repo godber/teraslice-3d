@@ -23,7 +23,10 @@ from tests.fixtures.teraslice_jobs import (
     kafka_sender_with_api_name_job,
     kafka_reader_with_api_name_job,
     op_fields_ignored_when_api_declared_job,
-    bare_operation_job
+    bare_operation_job,
+    file_reader_to_file_exporter_job,
+    s3_reader_to_s3_exporter_job,
+    noop_and_stdout_job
 )
 
 
@@ -176,11 +179,32 @@ class TestJobInfoSourceNode:
         job_data = unknown_source_job()
         job_info = JobInfo(job_data, self.logger)
         
-        # Should return None for unknown operation
-        assert job_info.source is None
+        # Should fallback to StorageNode with OTHER connector_type
+        assert job_info.source is not None
+        assert job_info.source.id == "default:custom_mystery_reader"
+        assert job_info.source.connector_type == "OTHER"
         
         # Should log a warning
-        self.logger.warning.assert_called_once_with('MISSING SOURCE')
+        self.logger.warning.assert_called_once_with('UNHANDLED SOURCE OPERATION: custom_mystery_reader')
+
+    def test_process_source_node_file_and_s3(self):
+        """Test source node processing for file_reader and s3_reader"""
+        job_info_file = JobInfo(file_reader_to_file_exporter_job(), self.logger)
+        assert job_info_file.source is not None
+        assert job_info_file.source.id == "default:/var/data/input"
+        assert job_info_file.source.connector_type == "FILE"
+
+        job_info_s3 = JobInfo(s3_reader_to_s3_exporter_job(), self.logger)
+        assert job_info_s3.source is not None
+        assert job_info_s3.source.id == "s3_conn:my-in-bucket/raw/"
+        assert job_info_s3.source.connector_type == "S3"
+
+    def test_process_source_node_data_generator(self):
+        """Test source node processing for data_generator"""
+        job_info = JobInfo(noop_and_stdout_job(), self.logger)
+        assert job_info.source is not None
+        assert job_info.source.id == "data_generator"
+        assert job_info.source.connector_type == "DATA_GENERATOR"
     
     def test_process_source_node_empty_operations(self):
         """Test source node processing when operations list is empty"""
@@ -348,24 +372,39 @@ class TestJobInfoDestinationNodes:
         job_data = count_by_field_job()
         job_info = JobInfo(job_data, self.logger)
         
-        # Should return empty list for count_by_field
-        assert len(job_info.destinations) == 0
-        
-        # Should log a debug message
-        self.logger.debug.assert_called_once()
+        assert len(job_info.destinations) == 1
+        assert job_info.destinations[0].id == "default:count_by_field"
+        assert job_info.destinations[0].connector_type == "OTHER"
     
     def test_process_destination_nodes_unknown_operation(self):
         """Test destination node processing for unknown operation type"""
         job_data = unknown_destination_job()
         job_info = JobInfo(job_data, self.logger)
         
-        # Should return empty list for unknown operation
-        assert len(job_info.destinations) == 0
+        # Should fallback to StorageNode with OTHER connector_type
+        assert len(job_info.destinations) == 1
+        assert job_info.destinations[0].id == "default:custom_mystery_exporter"
+        assert job_info.destinations[0].connector_type == "OTHER"
         
-        # Should log warnings
-        assert self.logger.warning.call_count == 2
-        warning_calls = [call.args[0] for call in self.logger.warning.call_args_list]
-        assert '\tMISSING DESTINATION' in warning_calls
+        # Should log warning
+        self.logger.warning.assert_called_once_with('UNHANDLED DESTINATION OPERATION: custom_mystery_exporter')
+
+    def test_process_destination_nodes_file_s3_noop(self):
+        """Test destination node processing for file, s3, noop, stdout"""
+        job_file = JobInfo(file_reader_to_file_exporter_job(), self.logger)
+        assert len(job_file.destinations) == 1
+        assert job_file.destinations[0].id == "default:/var/data/output"
+        assert job_file.destinations[0].connector_type == "FILE"
+
+        job_s3 = JobInfo(s3_reader_to_s3_exporter_job(), self.logger)
+        assert len(job_s3.destinations) == 1
+        assert job_s3.destinations[0].id == "s3_conn:my-out-bucket"
+        assert job_s3.destinations[0].connector_type == "S3"
+
+        job_noop = JobInfo(noop_and_stdout_job(), self.logger)
+        assert len(job_noop.destinations) == 1
+        assert job_noop.destinations[0].id == "noop"
+        assert job_noop.destinations[0].connector_type == "NOOP"
     
     def test_process_destination_nodes_empty_operations(self):
         """Test destination node processing when operations list is empty"""

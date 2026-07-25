@@ -3,7 +3,7 @@ from typing import Literal
 
 class StorageNode(BaseModel):
     id: str
-    connector_type: Literal['KAFKA', 'ES', 'DATA_GENERATOR']
+    connector_type: Literal['KAFKA', 'ES', 'FILE', 'S3', 'DATA_GENERATOR', 'NOOP', 'STDOUT', 'OTHER']
 
     # we make this object hashable so that we can deduplicate a list of them later
     def __hash__(self):
@@ -23,11 +23,9 @@ class JobInfo:
     Properties:
     * `source_node` - `<CONNECTOR>:<TOPIC|INDEX>`
        * e.g. `kafka_cluster1:topic1`
-       * TODO: Kafka only at the moment
-    * `source_type` -  `KAFKA|ES`
+    * `source_type` - `KAFKA|ES|FILE|S3|DATA_GENERATOR|OTHER`
     * `destination_nodes` - an array of one or more `destination_node` strings
-        * [`kafka_cluster1:topic-a-1`, `kafka_cluster1:topic-a-2`]
-    * `destination_type` - `KAFKA|ES`
+    * `destination_type` - `KAFKA|ES|FILE|S3|NOOP|STDOUT|OTHER`
     """
     def __init__(self, job, logger):
         self.job = job
@@ -108,8 +106,9 @@ class JobInfo:
     def process_source_node(self):
         source = None
         op = self.job['operations'][0]
+        op_type = op.get('_op', '')
 
-        if op['_op'] == 'kafka_reader':
+        if op_type == 'kafka_reader':
             topic = self._get_field_from_operation_or_api(op, 'topic')
 
             if topic:
@@ -120,22 +119,47 @@ class JobInfo:
                 )
             else:
                 self.logger.warning(f"kafka_reader missing topic: {op}")
-        elif op['_op'] == 'data_generator':
+        elif op_type == 'data_generator':
             # source_node -> data_generator
             source = StorageNode(
-                id=f"data_generator",
+                id="data_generator",
                 connector_type='DATA_GENERATOR'
             )
+        elif op_type in ('file_reader', 'file_assets') or 'file' in op_type:
+            path = self._get_field_from_operation_or_api(op, 'path')
+            node_id = f"{self._get_connection(op)}:{path}" if path else f"{self._get_connection(op)}:{op_type}"
+            source = StorageNode(
+                id=node_id,
+                connector_type='FILE'
+            )
+        elif op_type in ('s3_reader',) or 's3' in op_type:
+            bucket = self._get_field_from_operation_or_api(op, 'bucket')
+            prefix = self._get_field_from_operation_or_api(op, 'prefix') or self._get_field_from_operation_or_api(op, 'path')
+            if bucket and prefix:
+                node_id = f"{self._get_connection(op)}:{bucket}/{prefix}"
+            elif bucket:
+                node_id = f"{self._get_connection(op)}:{bucket}"
+            else:
+                node_id = f"{self._get_connection(op)}:{op_type}"
+            source = StorageNode(
+                id=node_id,
+                connector_type='S3'
+            )
         else:
-            self.logger.warning('MISSING SOURCE')
+            self.logger.warning(f"UNHANDLED SOURCE OPERATION: {op_type}")
+            source = StorageNode(
+                id=f"{self._get_connection(op)}:{op_type}",
+                connector_type='OTHER'
+            )
 
         return source
 
     def process_destination_nodes(self):
         destinations = []
         op = self.job['operations'][-1]
+        op_type = op.get('_op', '')
 
-        if op['_op'] == 'kafka_sender':
+        if op_type == 'kafka_sender':
             topic = self._get_field_from_operation_or_api(op, 'topic')
 
             if topic:
@@ -148,7 +172,7 @@ class JobInfo:
                 )
             else:
                 self.logger.warning(f"kafka_sender missing topic: {op}")
-        elif op['_op'] == 'elasticsearch_bulk':
+        elif op_type == 'elasticsearch_bulk':
             index = self._get_field_from_operation_or_api(op, 'index')
 
             if index:
@@ -161,7 +185,7 @@ class JobInfo:
                 )
             else:
                 self.logger.warning(f"elasticsearch_bulk missing index: {op}")
-        elif op['_op'] == 'routed_sender':
+        elif op_type == 'routed_sender':
             destination_type = None
 
             # find the API used by the routed sender (referenced via _api_name
@@ -182,7 +206,7 @@ class JobInfo:
             # elasticsearch index, it comes from the matching api's index or
             # topic value. For routed_sender the connection is supplied by the
             # routing map values rather than the api's _connection.
-            for suffix, connection in op['routing'].items():
+            for suffix, connection in op.get('routing', {}).items():
                 if destination_type == 'ES':
                     destinations.append(
                         StorageNode(
@@ -201,11 +225,59 @@ class JobInfo:
                     )
                 else:
                     self.logger.warning('UNKNOWN!!!!')
-        elif op['_op'] == 'count_by_field':
-            # FIXME: I am not sure how to handle these.
-            self.logger.debug(f"\t{op}")
+        elif op_type in ('file_exporter', 'file_sender', 'file_writer') or 'file' in op_type:
+            path = self._get_field_from_operation_or_api(op, 'path')
+            node_id = f"{self._get_connection(op)}:{path}" if path else f"{self._get_connection(op)}:{op_type}"
+            destinations.append(
+                StorageNode(
+                    id=node_id,
+                    connector_type='FILE'
+                )
+            )
+        elif op_type in ('s3_exporter', 's3_sender') or 's3' in op_type:
+            bucket = self._get_field_from_operation_or_api(op, 'bucket')
+            prefix = self._get_field_from_operation_or_api(op, 'prefix') or self._get_field_from_operation_or_api(op, 'path')
+            if bucket and prefix:
+                node_id = f"{self._get_connection(op)}:{bucket}/{prefix}"
+            elif bucket:
+                node_id = f"{self._get_connection(op)}:{bucket}"
+            else:
+                node_id = f"{self._get_connection(op)}:{op_type}"
+            destinations.append(
+                StorageNode(
+                    id=node_id,
+                    connector_type='S3'
+                )
+            )
+        elif op_type == 'noop':
+            destinations.append(
+                StorageNode(
+                    id="noop",
+                    connector_type='NOOP'
+                )
+            )
+        elif op_type == 'stdout':
+            destinations.append(
+                StorageNode(
+                    id="stdout",
+                    connector_type='STDOUT'
+                )
+            )
+        elif op_type == 'count_by_field':
+            destinations.append(
+                StorageNode(
+                    id=f"{self._get_connection(op)}:count_by_field",
+                    connector_type='OTHER'
+                )
+            )
         else:
-            self.logger.warning('\tMISSING DESTINATION')
-            self.logger.warning(f"\t{op}")
+            self.logger.warning(f"UNHANDLED DESTINATION OPERATION: {op_type}")
+            destinations.append(
+                StorageNode(
+                    id=f"{self._get_connection(op)}:{op_type}",
+                    connector_type='OTHER'
+                )
+            )
 
         return destinations
+

@@ -1,5 +1,6 @@
 export interface GraphNode {
   id: string;
+  connector_type?: string;
   x?: number;
   y?: number;
   z?: number;
