@@ -123,3 +123,44 @@ class TestPipelineGraphProcessing:
         
         # But links should not be deduplicated (each job creates its own link)
         assert len(result['links']) == 2
+
+    def test_grafana_url_included_when_setting_is_present(self, monkeypatch):
+        """Test that grafana_url is correctly generated for each link when settings.grafana_url is set."""
+        from app.main import settings
+        monkeypatch.setattr(settings, 'grafana_url', 'http://grafana.example.com')
+        
+        test_job = {
+            'job_id': 'job_123',
+            'name': 'grafana_pipeline',
+            'workers': 4,
+            'ex': {'_status': 'running'},
+            'operations': [
+                {'_op': 'kafka_reader', 'topic': 'input_topic'},
+                {'_op': 'elasticsearch_bulk', 'index': 'output_index'}
+            ]
+        }
+        
+        result = _process_jobs_to_graph([test_job])
+        link = result['links'][0]
+        assert 'grafana_url' in link
+        assert link['grafana_url'] == 'http://grafana.example.com/d/_ZjPQViiz/teraslice-job-detail?orgId=1&from=now-6h&to=now&var-job=job_123'
+
+    def test_grafana_url_omitted_when_setting_is_none(self, monkeypatch):
+        """Test that grafana_url is omitted when settings.grafana_url is None."""
+        from app.main import settings
+        monkeypatch.setattr(settings, 'grafana_url', None)
+        
+        test_job = {
+            'job_id': 'job_123',
+            'name': 'grafana_pipeline',
+            'workers': 4,
+            'ex': {'_status': 'running'},
+            'operations': [
+                {'_op': 'kafka_reader', 'topic': 'input_topic'},
+                {'_op': 'elasticsearch_bulk', 'index': 'output_index'}
+            ]
+        }
+        
+        result = _process_jobs_to_graph([test_job])
+        link = result['links'][0]
+        assert 'grafana_url' not in link

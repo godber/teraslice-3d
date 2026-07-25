@@ -212,6 +212,47 @@ body {
   vertical-align: middle;
 }
 
+.jobs-table__links-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jobs-table__link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.jobs-table__link-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.jobs-table__link-btn--teraslice {
+  color: #38bdf8;
+}
+
+.jobs-table__link-btn--teraslice:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+}
+
+.jobs-table__link-btn--grafana {
+  color: #f97316;
+}
+
+.jobs-table__link-btn--grafana:hover {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
 .jobs-table__empty {
   text-align: center;
   color: #888;

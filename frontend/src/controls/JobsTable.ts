@@ -75,7 +75,7 @@ export class JobsTable {
     const scroll = document.createElement('div');
     scroll.className = 'jobs-table-drawer__scroll';
 
-    this.jobsTable = this.createTable(['Name', 'Status', 'Workers', 'Source', 'Target']);
+    this.jobsTable = this.createTable(['Name', 'Links', 'Status', 'Workers', 'Source', 'Target']);
     this.jobsBody = this.jobsTable.querySelector('tbody')!;
 
     this.connectorsTable = this.createTable(['Name', 'Type', 'Jobs']);
@@ -156,7 +156,7 @@ export class JobsTable {
     // Jobs tab
     this.jobsBody.innerHTML = '';
     if (links.length === 0) {
-      this.emptyRow(this.jobsBody, 5, 'No matching jobs');
+      this.emptyRow(this.jobsBody, 6, 'No matching jobs');
     } else {
       for (const link of links) {
         const row = document.createElement('tr');
@@ -168,6 +168,38 @@ export class JobsTable {
 
         const nameCell = document.createElement('td');
         nameCell.textContent = link.name;
+
+        const linksCell = document.createElement('td');
+        const linksContainer = document.createElement('div');
+        linksContainer.className = 'jobs-table__links-cell';
+
+        const tsAnchor = document.createElement('a');
+        tsAnchor.className = 'jobs-table__link-btn jobs-table__link-btn--teraslice';
+        tsAnchor.href = link.url;
+        tsAnchor.target = '_blank';
+        tsAnchor.rel = 'noopener noreferrer';
+        tsAnchor.title = `Open Teraslice Job (${link.url})`;
+        tsAnchor.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+        tsAnchor.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        linksContainer.appendChild(tsAnchor);
+
+        if (link.grafana_url) {
+          const gfAnchor = document.createElement('a');
+          gfAnchor.className = 'jobs-table__link-btn jobs-table__link-btn--grafana';
+          gfAnchor.href = link.grafana_url;
+          gfAnchor.target = '_blank';
+          gfAnchor.rel = 'noopener noreferrer';
+          gfAnchor.title = `Open Grafana Dashboard (${link.grafana_url})`;
+          gfAnchor.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="M14 13v4"/></svg>`;
+          gfAnchor.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          linksContainer.appendChild(gfAnchor);
+        }
+
+        linksCell.appendChild(linksContainer);
 
         const statusCell = document.createElement('td');
         const dot = document.createElement('span');
@@ -186,6 +218,7 @@ export class JobsTable {
         targetCell.textContent = this.linkEndpointId(link.target);
 
         row.appendChild(nameCell);
+        row.appendChild(linksCell);
         row.appendChild(statusCell);
         row.appendChild(workersCell);
         row.appendChild(sourceCell);

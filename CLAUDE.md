@@ -170,6 +170,7 @@ fields live on the matching entry in the job's `apis` array:
 Environment variables:
 
 * `TERASLICE_URL`: Base URL for Teraslice API (required)
+* `GRAFANA_URL`: Base URL for Grafana dashboards (optional)
 * `LOG_LEVEL`: Logging level (default: INFO)
 * `CACERT_FILE`: Path to custom CA certificate file for SSL verification (optional)
 

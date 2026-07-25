@@ -19,6 +19,7 @@ from .lib.cache import CacheManager
 # Get settings from Environment with Pydantic BaseSettings
 class Settings(BaseSettings):
     teraslice_url: str = "http://localhost:5678"
+    grafana_url: str | None = None
     cacert_file: Path | None = None
     cache_ttl: int = 300    # Default TTL for cache entries in seconds
     refresh_interval: int = 90  # Default interval for refreshing cache entriesin seconds
@@ -122,7 +123,9 @@ def _process_jobs_to_graph(jobs_data):
     
     for job in jobs_data:
         try:
-            logger.debug(f"{job['name']} - {job['ex']['_status']} - {settings.teraslice_url}/jobs/{job['job_id']}",)
+            base_teraslice = settings.teraslice_url.rstrip('/')
+            teraslice_url = f"{base_teraslice}/jobs/{job['job_id']}"
+            logger.debug(f"{job['name']} - {job['ex']['_status']} - {teraslice_url}")
 
             job_info = JobInfo(job, logger)
 
@@ -130,17 +133,19 @@ def _process_jobs_to_graph(jobs_data):
 
             for destination in job_info.destinations:
                 nodes.append(destination)
-                links.append(
-                    {
-                        'source': job_info.source.id,
-                        'target': destination.id,
-                        'job_id': job['job_id'],
-                        'name': job['name'],
-                        'url': f"{settings.teraslice_url}/jobs/{job['job_id']}",
-                        'workers': job['workers'],
-                        'status': job['ex']['_status']
-                    }
-                )
+                link_dict = {
+                    'source': job_info.source.id,
+                    'target': destination.id,
+                    'job_id': job['job_id'],
+                    'name': job['name'],
+                    'url': teraslice_url,
+                    'workers': job['workers'],
+                    'status': job['ex']['_status']
+                }
+                if settings.grafana_url:
+                    base_grafana = settings.grafana_url.rstrip('/')
+                    link_dict['grafana_url'] = f"{base_grafana}/d/_ZjPQViiz/teraslice-job-detail?orgId=1&from=now-6h&to=now&var-job={job['job_id']}"
+                links.append(link_dict)
         except Exception as e:
             logger.error(f"Error processing job: {e}\nJob: {pprint.pformat(job)}")
             raise e
