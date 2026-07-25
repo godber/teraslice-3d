@@ -14,6 +14,7 @@ export interface GraphLink {
   workers: number;
   status: 'running' | 'starting' | 'stopped' | 'stopping' | 'failing';
   url: string;
+  grafana_url?: string;
 }
 
 export interface GraphData {

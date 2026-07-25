@@ -53,6 +53,7 @@ cd frontend && npm install && cd ..
 ```bash
 cd backend
 TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
+TERASLICE_URL="http://teraslice.example.com" GRAFANA_URL="http://grafana.example.com" uv run python -m fastapi dev
 TERASLICE_URL="http://teraslice.example.com" CACERT_FILE="$HOME/ca-bundle.pem" uv run python -m fastapi dev
 LOG_LEVEL="DEBUG" TERASLICE_URL="http://teraslice.example.com" uv run python -m fastapi dev
 ```
@@ -119,6 +120,7 @@ docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 teraslice-
 docker run -e TERASLICE_URL="http://teraslice.example.com" -p 8000:80 ghcr.io/godber/teraslice-3d:latest
 docker run \
     -e TERASLICE_URL="https://teraslice.example.com" \
+    -e GRAFANA_URL="https://grafana.example.com" \
     -e CACERT_FILE="/tmp/ca-bundle.pem" \
     -p 8000:80 \
     -v $HOME/ca-bundle.pem:/tmp/ca-bundle.pem \
