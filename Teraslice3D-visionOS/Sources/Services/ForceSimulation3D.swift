@@ -21,32 +21,38 @@ public final class ForceSimulation3D: @unchecked Sendable {
     public private(set) var nodes: [String: Node3D] = [:]
     public var links: [GraphLink] = []
 
-    public var repulsionStrength: Float = 0.04
-    public var springStrength: Float = 0.12
-    public var idealLinkLength: Float = 0.22
-    public var gravityStrength: Float = 0.03
+    public var repulsionStrength: Float = 50.0
+    public var springStrength: Float = 0.10
+    public var idealLinkLength: Float = 1.50
+    public var gravityStrength: Float = 0.05
     public var damping: Float = 0.85
-    public var boundsHalfWidth: Float = 0.40 // Keeps entities within [-0.4m, 0.4m] inside 1m x 1m x 1m Volume
+    public var boundsHalfWidth: Float? = nil // Unitless simulation space; volume clipping performed dynamically during spatial projection
 
     public init() {}
 
-    /// Setup simulation with a graph payload, distributing initial node positions evenly on a sphere.
+    /// Setup simulation with a graph payload, reconciling existing node positions and zeroing momentum.
     public func setup(graph: PipelineGraph) {
+        let previousNodes = nodes
         nodes.removeAll()
         links = graph.links
 
         let count = Float(graph.nodes.count)
         for (index, node) in graph.nodes.enumerated() {
-            // Fibonacci sphere distribution for uniform initial 3D spacing
-            let phi = acos(1.0 - 2.0 * (Float(index) + 0.5) / max(count, 1.0))
-            let theta = Float.pi * (1.0 + sqrt(5.0)) * Float(index)
-            let radius: Float = 0.20
+            if let existingNode = previousNodes[node.id] {
+                // Topology reconciliation: preserve existing 3D position and reset velocity to zero
+                nodes[node.id] = Node3D(id: node.id, position: existingNode.position)
+            } else {
+                // Fibonacci sphere distribution for uniform initial 3D spacing in abstract space
+                let phi = acos(1.0 - 2.0 * (Float(index) + 0.5) / max(count, 1.0))
+                let theta = Float.pi * (1.0 + sqrt(5.0)) * Float(index)
+                let radius: Float = 2.0
 
-            let x = radius * sin(phi) * cos(theta)
-            let y = radius * sin(phi) * sin(theta)
-            let z = radius * cos(phi)
+                let x = radius * sin(phi) * cos(theta)
+                let y = radius * sin(phi) * sin(theta)
+                let z = radius * cos(phi)
 
-            nodes[node.id] = Node3D(id: node.id, position: SIMD3<Float>(x, y, z))
+                nodes[node.id] = Node3D(id: node.id, position: SIMD3<Float>(x, y, z))
+            }
         }
     }
 
@@ -77,7 +83,8 @@ public final class ForceSimulation3D: @unchecked Sendable {
                     dist = simd_length(delta)
                 }
 
-                let forceMagnitude = (repulsionStrength / (dist * dist)) * alpha
+                let distSq = max(0.01, dist * dist)
+                let forceMagnitude = (repulsionStrength / distSq) * alpha
                 let forceVec = simd_normalize(delta) * forceMagnitude
 
                 nodes[idA]?.force += forceVec
@@ -111,19 +118,47 @@ public final class ForceSimulation3D: @unchecked Sendable {
             }
         }
 
-        // 5. Apply forces to update velocity, position, and enforce volume bounds
+        // 5. Apply forces to update velocity, position, and optional volume bounds
         for key in keys {
             guard var node = nodes[key] else { continue }
 
             node.velocity = (node.velocity + node.force) * damping
             node.position += node.velocity
 
-            // Clamp inside volumetric bounding box [-boundsHalfWidth, boundsHalfWidth]
-            node.position.x = simd_clamp(node.position.x, -boundsHalfWidth, boundsHalfWidth)
-            node.position.y = simd_clamp(node.position.y, -boundsHalfWidth, boundsHalfWidth)
-            node.position.z = simd_clamp(node.position.z, -boundsHalfWidth, boundsHalfWidth)
+            if let bounds = boundsHalfWidth {
+                node.position.x = simd_clamp(node.position.x, -bounds, bounds)
+                node.position.y = simd_clamp(node.position.y, -bounds, bounds)
+                node.position.z = simd_clamp(node.position.z, -bounds, bounds)
+            }
 
             nodes[key] = node
+        }
+    }
+
+    /// Dynamically centers graph at origin (0,0,0) and scales node positions to fit within target volumetric bounds.
+    public func fitToVolume(targetHalfWidth: Float = 0.25) {
+        guard !nodes.isEmpty else { return }
+
+        var minPos = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)
+        var maxPos = SIMD3<Float>(repeating: -Float.greatestFiniteMagnitude)
+
+        for node in nodes.values {
+            minPos = simd_min(minPos, node.position)
+            maxPos = simd_max(maxPos, node.position)
+        }
+
+        let center = (minPos + maxPos) * 0.5
+        let extent = maxPos - minPos
+        let maxExtent = max(extent.x, max(extent.y, extent.z))
+
+        guard maxExtent > 0.0001 else { return }
+
+        let targetSpan = targetHalfWidth * 2.0
+        let scale = targetSpan / maxExtent
+
+        for (id, var node) in nodes {
+            node.position = (node.position - center) * scale
+            nodes[id] = node
         }
     }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct JobsInspectorView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
 
     public init() {}
 
@@ -39,7 +40,15 @@ public struct JobsInspectorView: View {
                 }
             }
             .navigationTitle("Jobs & Connectors")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
         }
+        .frame(minWidth: 500, minHeight: 600)
     }
 
     private func statusColor(_ status: JobStatus) -> Color {

@@ -98,7 +98,7 @@ public struct GraphLink: Identifiable, Codable, Hashable, Sendable {
 }
 
 /// Full network graph payload returned by `/api/pipeline_graph`.
-public struct PipelineGraph: Codable, Sendable {
+public struct PipelineGraph: Codable, Equatable, Hashable, Sendable {
     public let nodes: [GraphNode]
     public let links: [GraphLink]
 

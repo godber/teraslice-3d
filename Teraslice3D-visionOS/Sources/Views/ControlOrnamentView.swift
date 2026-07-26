@@ -67,16 +67,6 @@ public struct ControlOrnamentView: View {
             }
             .help("Refresh Pipeline Data")
 
-            // Inspector Button
-            Button(action: { showInspector.toggle() }) {
-                Image(systemName: "list.bullet.rectangle")
-            }
-            .help("Jobs Inspector")
-            .sheet(isPresented: $showInspector) {
-                JobsInspectorView()
-                    .environment(appState)
-            }
-
             // Settings Button
             Button(action: { showSettings.toggle() }) {
                 Image(systemName: "gear")

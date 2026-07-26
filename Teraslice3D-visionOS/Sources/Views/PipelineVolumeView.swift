@@ -1,5 +1,8 @@
 import SwiftUI
 import RealityKit
+#if os(visionOS) || canImport(Spatial)
+import Spatial
+#endif
 
 public struct PipelineVolumeView: View {
     @Environment(AppState.self) private var appState
@@ -12,11 +15,17 @@ public struct PipelineVolumeView: View {
     public var body: some View {
         #if os(visionOS)
         RealityView { content in
-            let mesh = MeshResource.generateSphere(radius: 0.1)
-            let material = SimpleMaterial(color: .green, isMetallic: false)
-            let sphereEntity = ModelEntity(mesh: mesh, materials: [material])
-            sphereEntity.position = SIMD3<Float>(0, 0, 0)
-            content.add(sphereEntity)
+            content.add(graphEntity)
+            graphEntity.updateGraph(appState.graphData)
+        } update: { content in
+            // Graph entity automatically updates child transforms
+        }
+        .onChange(of: appState.graphData) { _, newGraphData in
+            graphEntity.updateGraph(newGraphData)
+        }
+        .ornament(attachmentAnchor: .scene(.bottom)) {
+            ControlOrnamentView()
+                .environment(appState)
         }
         #else
         VStack(spacing: 20) {
