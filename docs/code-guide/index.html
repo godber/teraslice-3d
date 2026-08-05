@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overview — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">Code &amp; SDK Guide</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol>
+        <li><a class="current" href="index.html"><span class="num">00</span> Overview &amp; map</a></li>
+    </ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 00 · Overview</div>
+<h1>Reading <code>Teraslice3D-visionOS/</code></h1>
+<p class="lede">
+    A guided tour of a ~1,600-line native visionOS app: what each file does, which Apple
+    frameworks it leans on, and where to read the official docs for every symbol it touches.
+    Written for someone learning Swift <em>and</em> the visionOS SDKs at the same time.
+</p>
+
+<div class="chips">
+    <span class="chip hl">Swift 6</span>
+    <span class="chip hl">SwiftUI</span>
+    <span class="chip hl">RealityKit</span>
+    <span class="chip">Observation</span>
+    <span class="chip">Foundation / URLSession</span>
+    <span class="chip">simd</span>
+    <span class="chip">Spatial</span>
+    <span class="chip">XCTest</span>
+    <span class="chip">visionOS 2.0+</span>
+</div>
+
+<h2 id="what">What the app is</h2>
+<p>
+    The repository's main product is a web app: a FastAPI backend that reads
+    <a href="https://terascope.github.io/teraslice/">Teraslice</a> job configs and serves a
+    pipeline graph, plus a Three.js frontend that draws it in 3D in a browser.
+    <code>Teraslice3D-visionOS/</code> is a second, native client for the same backend — the graph
+    rendered as actual geometry floating in your room on an Apple Vision Pro, instead of a
+    perspective projection on a flat screen.
+</p>
+<p>
+    It talks to the same four endpoints the web frontend uses
+    (<code>/api/pipeline_graph</code>, <code>/api/jobs</code>, <code>/api/cache/clear</code>,
+    <code>/api/version</code>), runs its own force-directed layout in Swift, and renders spheres
+    (Kafka topics, Elasticsearch indices) connected by cylinders (Teraslice jobs).
+    The design intent is captured in <code>AVP-SPEC.md</code> at the repo root; this guide
+    describes the code as it exists today, and flags the difference in
+    <a href="10-gaps-roadmap.html">chapter 10</a>.
+</p>
+
+<h2 id="stack">The stack in one screen</h2>
+<div class="diagram">
+<pre>
+   <b>Teraslice cluster</b>  ──►  <b>FastAPI backend</b>  ──►  JSON over HTTP
+                                                       │
+        ┌──────────────────────────────────────────────┴───────────────┐
+        │                                                              │
+   <b>frontend/</b> (Vite + Three.js, in a browser)      <b>Teraslice3D-visionOS/</b> (native)
+                                                              │
+        ┌─────────────────────────────────────────────────────┴─────────────────┐
+        │                                                                        │
+   <b>Foundation</b>            <b>Swift + simd</b>              <b>RealityKit</b>            <b>SwiftUI</b>
+   URLSession client   ForceSimulation3D        Entity / Component     Scenes, windows,
+   Codable models      (unitless R³ layout)     meshes, materials      volumes, ornaments
+        │                      │                        │                     │
+        └──────────► AppState (@Observable) ◄────────────┴─────────────────────┘
+</pre>
+</div>
+
+<p>
+    Two things are worth internalising before you read any Swift:
+</p>
+<ul>
+    <li>
+        <strong>SwiftUI owns the window; RealityKit owns what's inside it.</strong> SwiftUI declares
+        a <em>volume</em> (a box of space you can place on a desk), and a single SwiftUI view —
+        <a href="https://developer.apple.com/documentation/realitykit/realityview"><code>RealityView</code></a>
+        — is the bridge into the 3D scene graph. Everything spatial in this app hangs off that one call.
+    </li>
+    <li>
+        <strong>RealityKit units are metres.</strong> A sphere of <code>radius: 0.04</code> is 4 cm
+        across in your living room. That single fact explains most of the odd-looking constants in
+        this codebase (<code>0.40</code>, <code>0.015</code>, <code>0.002</code>) and the whole
+        "unitless simulation → physical projection" split in
+        <a href="06-layout-simd.html">chapter 06</a>.
+    </li>
+</ul>
+
+<h2 id="map">File map</h2>
+<p>Every source file, what it is, and which chapter covers it.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>File</th><th>Lines</th><th>Role</th><th>Chapter</th></tr></thead>
+<tbody>
+<tr><td><code>Package.swift</code></td><td>30</td><td>Swift Package manifest — used for <code>swift test</code> on macOS, not for the visionOS app build.</td><td><a href="09-build-test.html">09</a></td></tr>
+<tr><td><code>Teraslice3D.xcodeproj</code></td><td>—</td><td>The real visionOS app target: <code>SDKROOT = xros</code>, deployment target 2.0, generated Info.plist keys.</td><td><a href="02-app-scenes.html">02</a></td></tr>
+<tr><td><code>Sources/App/Teraslice3DApp.swift</code></td><td>34</td><td><code>@main</code> entry point; declares the window and the volumetric window.</td><td><a href="02-app-scenes.html">02</a></td></tr>
+<tr><td><code>Sources/App/AppState.swift</code></td><td>109</td><td><code>@Observable</code> single source of truth; owns the API client and the auto-refresh loop.</td><td><a href="03-state-concurrency.html">03</a></td></tr>
+<tr><td><code>Sources/Models/GraphData.swift</code></td><td>109</td><td><code>PipelineGraph</code> / <code>GraphNode</code> / <code>GraphLink</code> — the <code>/api/pipeline_graph</code> payload.</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><code>Sources/Models/JobDetails.swift</code></td><td>113</td><td>Job records with a hand-written decoder that reaches into a nested <code>ex._status</code>.</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><code>Sources/Models/ServerConfig.swift</code></td><td>32</td><td>Backend connection descriptor, plus two static presets.</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><code>Sources/Models/MockGraphProvider.swift</code></td><td>133</td><td>Scrubbed offline fixture data — the app's fallback and the tests' input.</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><code>Sources/Services/TerasliceAPIClient.swift</code></td><td>133</td><td><code>actor</code> wrapping <code>URLSession</code> with async/await.</td><td><a href="05-networking.html">05</a></td></tr>
+<tr><td><code>Sources/Services/ForceSimulation3D.swift</code></td><td>172</td><td>Pure-Swift force-directed layout in abstract ℝ³ (repulsion, springs, gravity, damping).</td><td><a href="06-layout-simd.html">06</a></td></tr>
+<tr><td><code>Sources/RealityKit/PipelineGraphEntity.swift</code></td><td>117</td><td>Scene-graph root; <code>VolumetricProjection</code> maps simulation space → metres.</td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><code>Sources/RealityKit/NodeEntity.swift</code></td><td>73</td><td>One sphere per graph node: mesh, material, collider, hover effect.</td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><code>Sources/RealityKit/LinkEntity.swift</code></td><td>113</td><td>One cylinder per job, positioned at a midpoint and rotated by a quaternion.</td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><code>Sources/Views/PipelineVolumeView.swift</code></td><td>74</td><td>The <code>RealityView</code> host; also a 2D fallback for non-visionOS builds.</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><code>Sources/Views/ControlOrnamentView.swift</code></td><td>82</td><td>The floating control bar attached below the volume.</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><code>Sources/Views/JobsInspectorView.swift</code></td><td>64</td><td><code>List</code> of jobs in a <code>NavigationStack</code> (written, not yet presented).</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><code>Sources/Views/SettingsView.swift</code></td><td>73</td><td><code>Form</code>-based server management and cache clearing, shown as a sheet.</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><code>Tests/Teraslice3DTests/…</code></td><td>178</td><td>9 XCTest cases, all against the layout math and decoders — no UI tests.</td><td><a href="09-build-test.html">09</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="flow">One trip through the code</h2>
+<p>
+    The fastest way to hold the app in your head is to follow a single refresh from launch to pixels:
+</p>
+<ol>
+    <li>
+        <strong>Launch.</strong> <code>Teraslice3DApp</code> is annotated <code>@main</code>, so Swift
+        generates the entry point. Its <code>body</code> returns a <code>Scene</code>, and visionOS
+        opens the app's default scene. <span class="chip">02</span>
+    </li>
+    <li>
+        <strong>State construction.</strong> <code>@State private var appState = AppState()</code>
+        creates the observable model once and injects it with <code>.environment(appState)</code>.
+        <code>AppState.init</code> kicks off a <code>Task</code> that fetches data and then starts a
+        30-second refresh loop. <span class="chip">03</span>
+    </li>
+    <li>
+        <strong>Fetch + decode.</strong> <code>TerasliceAPIClient</code> (an <code>actor</code>)
+        awaits <code>URLSession.data(for:)</code>, checks the status code, and hands the bytes to
+        <code>JSONDecoder</code>, which builds <code>PipelineGraph</code> via <code>Codable</code>.
+        Failures silently substitute <code>MockGraphProvider</code> data. <span class="chip">04</span> <span class="chip">05</span>
+    </li>
+    <li>
+        <strong>Observation fires.</strong> Assigning <code>appState.graphData</code> invalidates any
+        view that read it. <code>PipelineVolumeView</code> has
+        <code>.onChange(of: appState.graphData)</code>, which calls
+        <code>graphEntity.updateGraph(newGraphData)</code>. <span class="chip">03</span> <span class="chip">08</span>
+    </li>
+    <li>
+        <strong>Layout.</strong> <code>ForceSimulation3D</code> seeds node positions on a Fibonacci
+        sphere and runs 120 iterations of repulsion + springs + gravity in unitless space.
+        <span class="chip">06</span>
+    </li>
+    <li>
+        <strong>Projection.</strong> <code>VolumetricProjection</code> measures the resulting bounding
+        box, subtracts the centroid, and scales the longest axis to 0.40 m so the graph always fits
+        the volume regardless of how large the topology grew. <span class="chip">06</span> <span class="chip">07</span>
+    </li>
+    <li>
+        <strong>Geometry.</strong> For each node, a <code>NodeEntity</code> gets a sphere
+        <code>MeshResource</code>, a colour-coded <code>SimpleMaterial</code>, a collision shape, and
+        <code>InputTargetComponent</code> + <code>HoverEffectComponent</code> so gaze lights it up.
+        For each link, a <code>LinkEntity</code> cylinder is sized by worker count and rotated to
+        point from source to target. <span class="chip">07</span>
+    </li>
+    <li>
+        <strong>Chrome.</strong> A SwiftUI <code>.ornament</code> hangs a glass control bar under the
+        volume: server picker, search field, filter mode, refresh, settings sheet.
+        <span class="chip">08</span>
+    </li>
+</ol>
+
+<div class="callout note">
+    <div class="ico">👁</div>
+    <div>
+        <span class="label">See it running</span>
+        <p>
+            The sibling page <a href="../index.html">Spatial UI Architecture Guide</a> annotates an
+            actual screenshot from the simulator — passthrough, volume glass, the
+            <code>RealityView</code> content, the ornament, the window drag handle. Worth skimming
+            first if you have never used a Vision Pro.
+        </p>
+    </div>
+</div>
+
+<h2 id="how-to-read">How to read this guide</h2>
+<p>
+    Chapters are ordered so each one only depends on the ones before it, but they are deliberately
+    shallow and reference-heavy: every Apple type is linked to its documentation page the first time
+    it matters, and each chapter ends with a reference block. Pick your route:
+</p>
+
+<div class="cards">
+    <a class="card" href="01-swift-tour.html">
+        <div class="num">Route A · new to Swift</div>
+        <h4>Read straight through</h4>
+        <p>01 → 11. Chapter 01 explains the language features the rest of the code assumes.</p>
+    </a>
+    <a class="card" href="07-realitykit.html">
+        <div class="num">Route B · know Swift, new to visionOS</div>
+        <h4>Start at the 3D half</h4>
+        <p>02 → 07 → 08 → 10. Scenes, entities, components, and what's still missing.</p>
+    </a>
+    <a class="card" href="10-gaps-roadmap.html">
+        <div class="num">Route C · here to build</div>
+        <h4>Jump to the gaps</h4>
+        <p>Chapter 10 lists every unfinished feature with the SDK pieces each one needs.</p>
+    </a>
+</div>
+
+<h3>Conventions</h3>
+<ul>
+    <li>Code blocks name their source file and line range; excerpts are lightly trimmed but never rewritten.</li>
+    <li><span class="chip">🟠 Swift note</span> boxes explain a language feature rather than the app.</li>
+    <li><span class="chip">🔴 Gap</span> boxes flag code that is written but unused, or behaviour that will surprise you.</li>
+    <li>Framework links point at <code>developer.apple.com</code> and were checked when this guide was written; Apple occasionally reshuffles paths.</li>
+</ul>
+
+<div class="callout tip">
+    <div class="ico">🧰</div>
+    <div>
+        <span class="label">To follow along in Xcode</span>
+        <p>
+            Open <code>Teraslice3D-visionOS/Teraslice3D.xcodeproj</code>, choose an
+            <em>Apple Vision Pro</em> simulator destination, and run. Start the backend first with
+            <code>cd backend &amp;&amp; TERASLICE_URL="…" uv run python -m fastapi dev</code> — the app
+            defaults to <code>http://127.0.0.1:8000</code> and silently falls back to mock data if
+            nothing answers. Details and caveats in <a href="09-build-test.html">chapter 09</a>.
+        </p>
+    </div>
+</div>
+
+<div class="refs">
+    <span class="label">Orientation references</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/visionos">visionOS developer documentation</a> — framework hub for the whole platform.</li>
+        <li><span class="kind">tutorial</span><a href="https://developer.apple.com/documentation/visionos/creating-your-first-visionos-app">Creating your first visionOS app</a> — the 30-minute version of chapters 02 and 08.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10260/">WWDC23: Get started with building apps for spatial computing</a> — best single orientation talk.</li>
+        <li><span class="kind">hig</span><a href="https://developer.apple.com/design/human-interface-guidelines/designing-for-visionos">HIG: Designing for visionOS</a> — why windows, volumes and immersive spaces exist as separate ideas.</li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/">The Swift Programming Language</a> — the free, authoritative language reference.</li>
+        <li><span class="kind">repo</span><a href="https://terascope.github.io/teraslice/">Teraslice documentation</a> — what the graph actually represents.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="../index.html"><span class="dir">← Sibling guide</span><span class="ttl">Spatial UI Architecture</span></a>
+    <a class="next" href="01-swift-tour.html"><span class="dir">Next →</span><span class="ttl">01 · Swift tour, by example</span></a>
+</div>
+
+<footer class="page-footer">
+    Teraslice 3D · visionOS code &amp; SDK guide · describes the code on branch
+    <code>feature/add-avp-app</code>.
+</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

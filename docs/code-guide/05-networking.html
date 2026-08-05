@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · Networking — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">05 · Networking</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a class="current" href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 05 · Foundation / URLSession</div>
+<h1>Networking</h1>
+<p class="lede">
+    One <code>actor</code>, four endpoints, no dependencies. <code>TerasliceAPIClient</code> is a good
+    model of modern async <code>URLSession</code> use — and a good case study in how a well-meant
+    fallback strategy can hide failures from the user.
+</p>
+
+<div class="chips">
+    <span class="chip hl">actor</span>
+    <span class="chip hl">URLSession</span>
+    <span class="chip hl">async/await</span>
+    <span class="chip">URLRequest</span>
+    <span class="chip">HTTPURLResponse</span>
+    <span class="chip">Result</span>
+    <span class="chip">App Transport Security</span>
+</div>
+
+<h2 id="endpoints">The four endpoints</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Method</th><th>Endpoint</th><th>Returns</th><th>Timeout</th></tr></thead>
+<tbody>
+<tr><td><code>fetchPipelineGraph</code></td><td><code>GET /api/pipeline_graph</code></td><td><code>Result&lt;PipelineGraph, APIError&gt;</code></td><td>8 s</td></tr>
+<tr><td><code>fetchJobs</code></td><td><code>GET /api/jobs?size=500&amp;active=true&amp;ex=_status</code></td><td><code>Result&lt;[JobDetails], APIError&gt;</code></td><td>8 s</td></tr>
+<tr><td><code>clearCache</code></td><td><code>POST /api/cache/clear</code></td><td><code>Bool</code></td><td>5 s</td></tr>
+<tr><td><code>fetchVersion</code></td><td><code>GET /api/version</code></td><td><code>String</code></td><td>5 s</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+    These match the FastAPI backend documented in the repo's <code>CLAUDE.md</code>, including the
+    hard-coded <code>size=500</code> job limit the web frontend also uses.
+</p>
+
+<h2 id="actor">Why an <code>actor</code></h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Services/TerasliceAPIClient.swift<span class="lines">lines 19–24</span></div>
+<pre><code class="swift">public actor TerasliceAPIClient {
+    private let urlSession: URLSession
+
+    public init(urlSession: URLSession = .shared) {
+        self.urlSession = urlSession
+    }
+}</code></pre>
+</div>
+
+<p>
+    An <a href="https://developer.apple.com/documentation/swift/actor"><code>actor</code></a> is a
+    reference type whose mutable state is protected by the compiler: only one task executes inside it
+    at a time, and callers from outside must <code>await</code>. It's Swift's built-in answer to "put a
+    lock around this object", with the lock checked at compile time rather than remembered by hand.
+</p>
+<p>
+    Strictly speaking this client holds no mutable state, so it doesn't <em>need</em> actor isolation —
+    <code>URLSession</code> is already thread-safe. But it makes the type trivially
+    <code>Sendable</code>, so passing it around under Swift 6 strict checking is free, and it's the
+    right home for state you'd add later (a response cache, an in-flight request map, an auth token).
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · dependency injection via a default argument</span>
+        <p>
+            <code>init(urlSession: URLSession = .shared)</code> is the whole DI story. Production code
+            calls <code>TerasliceAPIClient()</code>; a test can pass a session configured with
+            <a href="https://developer.apple.com/documentation/foundation/urlprotocol"><code>URLProtocol</code></a>
+            stubs. The current test suite doesn't exercise this — it uses the <code>isMock</code> flag
+            instead — but the seam is already there.
+        </p>
+    </div>
+</div>
+
+<h2 id="request">Anatomy of one request</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Services/TerasliceAPIClient.swift<span class="lines">lines 26–58</span></div>
+<pre><code class="swift">public func fetchPipelineGraph(serverConfig: ServerConfig) async -&gt; Result&lt;PipelineGraph, APIError&gt; {
+    if serverConfig.isMock {
+        return .success(MockGraphProvider.samplePipelineGraph())
+    }
+
+    guard let baseURL = serverConfig.baseURL,
+          let url = URL(string: "/api/pipeline_graph", relativeTo: baseURL) else {
+        return .failure(.invalidURL)
+    }
+
+    var request = URLRequest(url: url)
+    request.timeoutInterval = 8.0
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+    do {
+        let (data, response) = try await urlSession.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return .success(MockGraphProvider.samplePipelineGraph())
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            return .failure(.serverError(statusCode: httpResponse.statusCode))
+        }
+
+        let graph = try JSONDecoder().decode(PipelineGraph.self, from: data)
+        return .success(graph)
+    } catch {
+        // Fallback to mock data if network fails so app is immediately usable
+        print("API fetch failed, falling back to mock data: \(error)")
+        return .success(MockGraphProvider.samplePipelineGraph())
+    }
+}</code></pre>
+</div>
+
+<p>Line by line, the framework pieces:</p>
+<ul>
+    <li>
+        <strong><code>URL(string:relativeTo:)</code></strong> resolves <code>/api/pipeline_graph</code>
+        against <code>http://127.0.0.1:8000</code>. The leading slash makes it root-relative, so any
+        path on the base URL is replaced rather than appended. For anything more complex than this,
+        <a href="https://developer.apple.com/documentation/foundation/urlcomponents"><code>URLComponents</code></a>
+        is the right tool — it also percent-encodes query values, which the hand-written
+        <code>"?size=500&amp;active=true&amp;ex=_status"</code> string in <code>fetchJobs</code> gets
+        away with only because those values happen to be URL-safe.
+    </li>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/foundation/urlrequest"><code>URLRequest</code></a></strong>
+        carries the method, headers, body and per-request timeout. It's a <code>struct</code>, hence
+        <code>var request</code> before mutating it.
+    </li>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/foundation/urlsession/data(for:delegate:)"><code>try await urlSession.data(for:)</code></a></strong>
+        is the async replacement for the completion-handler API. It returns a tuple
+        <code>(Data, URLResponse)</code> and throws on transport failure. It also participates in
+        cooperative cancellation: cancel the surrounding <code>Task</code> and the HTTP request is
+        cancelled too.
+    </li>
+    <li>
+        <strong><code>response as? HTTPURLResponse</code></strong> — the generic
+        <code>URLResponse</code> has no status code, so it's downcast conditionally. <code>as?</code>
+        yields an optional; <code>as!</code> would crash on failure.
+    </li>
+    <li>
+        <strong><code>(200...299).contains(…)</code></strong> — a <code>ClosedRange&lt;Int&gt;</code>
+        used as a set membership test. Idiomatic Swift for status-code checks.
+    </li>
+    <li>
+        <strong><code>do</code>/<code>catch</code> around <code>try</code></strong> — both the network
+        call and the decode can throw, and both land in the same <code>catch</code>.
+    </li>
+</ul>
+
+<h2 id="fallback">The fallback strategy, and why it will bite</h2>
+<p>
+    Three different failure modes are handled three different ways, and two of them lie to the caller:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Failure</th><th>Current behaviour</th><th>What the user sees</th></tr></thead>
+<tbody>
+<tr><td>Malformed base URL</td><td><code>.failure(.invalidURL)</code></td><td><code>AppState</code> substitutes mock data</td></tr>
+<tr><td>HTTP 4xx / 5xx</td><td><code>.failure(.serverError)</code></td><td><code>AppState</code> substitutes mock data</td></tr>
+<tr><td>Connection refused / timeout</td><td><strong><code>.success</code>(mock data)</strong></td><td>Mock data, no error path taken at all</td></tr>
+<tr><td>JSON that doesn't match the model</td><td><strong><code>.success</code>(mock data)</strong></td><td>Mock data; the decode error only reaches <code>print()</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · you cannot tell real data from fixtures</span>
+        <p>
+            Every failure path ends at the same 9-node NOAA fixture, and
+            <code>AppState.refreshData()</code> makes the <code>.failure</code> cases converge there
+            too. Combined with <code>fetchVersion</code> returning the string
+            <code>"Offline Mode"</code> on error, the only signal that your cluster is unreachable is a
+            small label in the ornament — while a plausible-looking pipeline floats in front of you.
+            For a monitoring tool, that's the wrong default: a failing production graph and a working
+            fixture look identical.
+        </p>
+        <p>
+            The fix is small: let the client report failures honestly (<code>throws</code>, or
+            <code>Result</code> with no mock substitution), keep <code>AppState</code>'s last-known-good
+            graph on error, and surface an explicit <code>lastError</code> in the ornament. Mock data
+            then stays where it belongs — behind <code>ServerConfig.isMock</code>, which the user
+            chooses deliberately from the server menu.
+        </p>
+    </div>
+</div>
+
+<div class="callout note">
+    <div class="ico">🪵</div>
+    <div>
+        <span class="label"><code>print()</code> vs <code>Logger</code></span>
+        <p>
+            <code>print</code> goes nowhere useful on a device. The platform logging API is
+            <a href="https://developer.apple.com/documentation/os/logger"><code>Logger</code></a> from
+            the <code>os</code> module: <code>Logger(subsystem: "com.teraslice.Teraslice3D",
+            category: "api").error("…")</code>. It's structured, viewable in Console.app and
+            <code>log stream</code>, privacy-aware, and nearly free when nobody is listening. Two of
+            <code>APIError</code>'s four cases (<code>decodingError</code>,
+            <code>networkError</code>) are never actually constructed — they'd become useful the moment
+            errors are propagated instead of swallowed.
+        </p>
+    </div>
+</div>
+
+<h2 id="ats">Getting <code>http://127.0.0.1:8000</code> to work at all</h2>
+<p>
+    Apple platforms block plaintext HTTP by default via
+    <a href="https://developer.apple.com/documentation/security/preventing-insecure-network-connections">App Transport Security</a>.
+    This project takes the blunt route, in the Xcode build settings rather than a checked-in plist:
+</p>
+
+<div class="codeblock">
+<div class="filename">Teraslice3D.xcodeproj — generated Info.plist key<span class="lines">—</span></div>
+<pre><code class="swift">GENERATE_INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;</code></pre>
+</div>
+
+<p>
+    That allows <em>all</em> insecure loads. The narrower option is an
+    <code>NSExceptionDomains</code> entry for <code>127.0.0.1</code> / <code>localhost</code> only,
+    which is what you'd want before shipping. Two practical notes for running against a Mac-hosted
+    backend:
+</p>
+<ul>
+    <li><strong>Simulator:</strong> <code>127.0.0.1</code> resolves to the host Mac's loopback, so the default config works with <code>fastapi dev</code> running locally.</li>
+    <li><strong>Real Vision Pro:</strong> loopback is the headset itself. Use the Mac's LAN address (<code>http://192.168.x.x:8000</code>) — exactly the case the "Add Custom Server" form in <code>SettingsView</code> exists for — and make sure the backend binds <code>0.0.0.0</code>, not just localhost.</li>
+</ul>
+
+<h3>Things a production client would add</h3>
+<ul>
+    <li><strong>Retry with backoff</strong> for transient 5xx / timeouts, instead of waiting 30 s for the next poll.</li>
+    <li><strong>A configured session</strong> — <code>URLSession(configuration: .ephemeral)</code> or a custom <a href="https://developer.apple.com/documentation/foundation/urlsessionconfiguration"><code>URLSessionConfiguration</code></a> with <code>waitsForConnectivity</code>, cache policy and per-host limits, rather than <code>.shared</code>.</li>
+    <li><strong>ETag / <code>If-None-Match</code> handling</strong>, since the graph rarely changes between 30-second polls.</li>
+    <li><strong>Auth</strong> — the backend supports a custom CA (<code>CACERT_FILE</code>) and may sit behind a proxy; that means HTTPS plus either a pinned certificate via <a href="https://developer.apple.com/documentation/foundation/urlsessiondelegate"><code>URLSessionDelegate</code></a> or a trusted profile on the device.</li>
+    <li><strong>Cancellation of superseded requests</strong> — switching servers mid-flight currently lets the old response land after the new one.</li>
+</ul>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/foundation/url-loading-system">URL Loading System</a> — the map of <code>URLSession</code> and friends.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/foundation/urlsession"><code>URLSession</code></a> · <a href="https://developer.apple.com/documentation/foundation/urlrequest"><code>URLRequest</code></a> · <a href="https://developer.apple.com/documentation/foundation/httpurlresponse"><code>HTTPURLResponse</code></a> · <a href="https://developer.apple.com/documentation/foundation/urlcomponents"><code>URLComponents</code></a></li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/foundation/fetching-website-data-into-memory">Fetching website data into memory</a> — the async <code>data(for:)</code> pattern used here.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/security/preventing-insecure-network-connections">Preventing insecure network connections</a> — ATS keys and exception domains.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/os/logger"><code>Logger</code></a> — what to use instead of <code>print</code>.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/result"><code>Result</code></a> · <a href="https://developer.apple.com/documentation/swift/actor"><code>actor</code></a></li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency">TSPL: Concurrency</a> — actor isolation and cancellation.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="04-models-json.html"><span class="dir">← Previous</span><span class="ttl">04 · Models &amp; Codable</span></a>
+    <a class="next" href="06-layout-simd.html"><span class="dir">Next →</span><span class="ttl">06 · Layout math &amp; simd</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 · Gaps &amp; roadmap — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">10 · Gaps &amp; roadmap</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a class="current" href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 10 · What's missing, and what it needs</div>
+<h1>Gaps &amp; roadmap</h1>
+<p class="lede">
+    Everything the code stages but doesn't finish, each paired with the specific SDK pieces that would
+    complete it. Ordered roughly by learning value per hour: the first three teach you the most about
+    visionOS, the rest are ordinary software work.
+</p>
+
+<div class="callout note">
+    <div class="ico">🗺️</div>
+    <div>
+        <span class="label">Where this comes from</span>
+        <p>
+            <code>AVP-SPEC.md</code> in the repo root defines four "chunks" and marks 1 done, 2 and 3
+            in progress, 4 pending. This chapter reads the code instead of the plan: the difference
+            between what's written and what actually runs. Nothing here is a criticism of a
+            work-in-progress branch — it's a map of where to put your hands next.
+        </p>
+    </div>
+</div>
+
+<h2 id="state">Current state at a glance</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Capability</th><th>State</th></tr></thead>
+<tbody>
+<tr><td>Fetch + decode graph and jobs from the FastAPI backend</td><td>✅ Works</td></tr>
+<tr><td>Offline mock data, selectable as a "server"</td><td>✅ Works</td></tr>
+<tr><td>3D force layout, reconciled across refreshes</td><td>✅ Works</td></tr>
+<tr><td>Spheres + pipes rendered in a volume, colour-coded, worker-scaled</td><td>✅ Works</td></tr>
+<tr><td>Control ornament: server picker, search field, filter toggle, refresh, settings</td><td>✅ Renders; search and filter are inert</td></tr>
+<tr><td>30-second auto-refresh</td><td>✅ Works</td></tr>
+<tr><td>Tap a node or link to select / inspect</td><td>❌ Components present, no gesture</td></tr>
+<tr><td>Labels or info cards in 3D</td><td>❌ Nothing in the volume is labelled</td></tr>
+<tr><td>Search highlight / remove-unmatched</td><td>❌ State bound, never applied</td></tr>
+<tr><td>Animated (settling) layout</td><td>❌ <code>stepSimulation()</code> never called</td></tr>
+<tr><td>Jobs inspector panel</td><td>❌ View written, never presented</td></tr>
+<tr><td>Immersive space (walk inside the pipeline)</td><td>❌ Not started</td></tr>
+<tr><td>Grab / rotate the graph</td><td>❌ <code>rotation</code> state declared, unused</td></tr>
+<tr><td>Visible error state when the backend is down</td><td>❌ Silently shows fixtures</td></tr>
+<tr><td>Links out to Teraslice / Grafana</td><td>❌ URLs decoded, never opened</td></tr>
+<tr><td>Persisted server list</td><td>❌ In-memory only</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="one">1 · Make things tappable</h2>
+<p>
+    <strong>Highest value per line of code in the whole project.</strong> The entities already have
+    <code>CollisionComponent</code> + <code>InputTargetComponent</code>; the missing half is a SwiftUI
+    gesture on the <code>RealityView</code>, and a place to put the result — which
+    <code>AppState.selectedNodeID</code> / <code>selectedLinkID</code> already are.
+</p>
+<div class="codeblock">
+<div class="filename">Sketch — PipelineVolumeView.swift<span class="lines">—</span></div>
+<pre><code class="swift">RealityView { content in … }
+    .gesture(
+        SpatialTapGesture()
+            .targetedToAnyEntity()
+            .onEnded { value in
+                switch value.entity {
+                case let node as NodeEntity: appState.selectedNodeID = node.nodeID
+                case let link as LinkEntity: appState.selectedLinkID = link.linkID
+                default: break
+                }
+            }
+    )</code></pre>
+</div>
+<p>
+    Note how the <code>NodeEntity</code>/<code>LinkEntity</code> subclasses pay off here: the
+    <code>as?</code> cast recovers the domain identity directly from the hit entity. The same
+    <code>.targetedToAnyEntity()</code> pattern extends to <code>DragGesture</code> (move a node) and
+    <code>RotateGesture3D</code> (spin the whole graph — the purpose of that unused
+    <code>Rotation3D</code> state).
+</p>
+<div class="refs">
+    <span class="label">Needs</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/spatialtapgesture"><code>SpatialTapGesture</code></a> · <a href="https://developer.apple.com/documentation/realitykit/entitytargetvalue"><code>EntityTargetValue</code></a> · <a href="https://developer.apple.com/documentation/swiftui/rotategesture3d"><code>RotateGesture3D</code></a></li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/realitykit/transforming-realitykit-entities-with-gestures">Transforming RealityKit entities with gestures</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10073/">WWDC23: Design for spatial input</a></li>
+    </ul>
+</div>
+
+<h2 id="two">2 · Labels and info cards (attachments)</h2>
+<p>
+    Right now the volume shows unlabelled coloured balls: you cannot tell which topic is which without
+    the web UI open beside you. Two levels of fix:
+</p>
+<ul>
+    <li><strong>Cheap:</strong> <a href="https://developer.apple.com/documentation/realitykit/textcomponent"><code>TextComponent</code></a> or <code>MeshResource.generateText</code> child entities, plus <a href="https://developer.apple.com/documentation/realitykit/billboardcomponent"><code>BillboardComponent</code></a> so they turn to face you as you move.</li>
+    <li><strong>Right:</strong> <strong>attachments</strong> — real SwiftUI views placed in 3D space. You declare them in the <code>RealityView</code>'s <code>attachments:</code> builder (or attach a <a href="https://developer.apple.com/documentation/realitykit/viewattachmentcomponent"><code>ViewAttachmentComponent</code></a>), then position the resulting entity beside the selected node. That gets you the glassmorphic detail card from the spec — job name, worker count, status pill, and buttons that open Teraslice or Grafana — with all the SwiftUI you already know.</li>
+</ul>
+<p>
+    Opening those URLs is one environment value: <code>@Environment(\.openURL) private var openURL</code>,
+    then <code>openURL(url)</code> — the decoded <code>link.url</code> and <code>link.grafana_url</code>
+    are sitting unused in the model.
+</p>
+<div class="refs">
+    <span class="label">Needs</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit/realityview/init(make:update:attachments:)"><code>RealityView(make:update:attachments:)</code></a> · <a href="https://developer.apple.com/documentation/realitykit/viewattachmentcomponent"><code>ViewAttachmentComponent</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit/textcomponent"><code>TextComponent</code></a> · <a href="https://developer.apple.com/documentation/realitykit/billboardcomponent"><code>BillboardComponent</code></a> · <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openurl"><code>openURL</code></a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2025/274/">WWDC25: Better together — SwiftUI and RealityKit</a></li>
+    </ul>
+</div>
+
+<h2 id="three">3 · A frame loop, so the graph moves</h2>
+<p>
+    <code>PipelineGraphEntity.stepSimulation()</code> is written and orphaned
+    (<a href="07-realitykit.html">chapter 07</a>). Wiring it up turns a static snapshot into a graph
+    that visibly settles, which is most of why force-directed layouts are compelling. Two idiomatic
+    routes:
+</p>
+<div class="codeblock">
+<div class="filename">Option A — subscribe to scene updates<span class="lines">—</span></div>
+<pre><code class="swift">RealityView { content in
+    content.add(graphEntity)
+    _ = content.subscribe(to: SceneEvents.Update.self) { _ in
+        graphEntity.stepSimulation()
+    }
+}</code></pre>
+</div>
+<p>
+    <strong>Option B</strong> is a real <a href="https://developer.apple.com/documentation/realitykit/implementing-systems-for-entities-in-a-scene">RealityKit <code>System</code></a>:
+    register a <code>System</code> that runs each frame over entities carrying a component you define.
+    More ceremony, but it's the ECS-native design, composes with other systems, and keeps the frame work
+    out of your view layer. Either way, hold the subscription (a <code>Cancellable</code>) somewhere it
+    won't be deallocated, and keep the per-frame cost bounded — see the O(n²) discussion in
+    <a href="06-layout-simd.html">chapter 06</a>.
+</p>
+
+<h2 id="four">4 · Make search and filter do something</h2>
+<p>
+    <code>searchText</code>, <code>filterMode</code> and <code>matchesSearch(_:)</code> exist; nothing
+    consumes them. The visionOS-appropriate implementation for the two modes:
+</p>
+<ul>
+    <li><strong>Highlight:</strong> keep everything, and dim non-matches with <a href="https://developer.apple.com/documentation/realitykit/opacitycomponent"><code>OpacityComponent</code></a> (<code>opacity = 0.15</code>). Cheap, reversible, and preserves the shape of the graph — much better in 3D than removing things, because a hole in a graph is disorienting.</li>
+    <li><strong>Remove unmatched:</strong> <code>removeFromParent()</code> on non-matching entities, or set <code>opacity = 0</code> plus removing the collider so they can't be tapped.</li>
+    <li>Drive both from a <code>.onChange(of: appState.searchText)</code> on the <code>RealityView</code>, calling a new <code>graphEntity.applyFilter(matching:mode:)</code>. No relayout needed — filtering should never move nodes, or the user loses their mental map.</li>
+    <li>Consider replacing the hand-built capsule search field with <a href="https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)"><code>.searchable</code></a> for the system look and keyboard behaviour.</li>
+</ul>
+
+<h2 id="five">5 · Tell the truth about failures</h2>
+<p>
+    The most important non-3D fix, and the one with real operational consequences for a monitoring tool
+    (<a href="05-networking.html">chapter 05</a>): every failure currently lands on the same fixture
+    data. Concretely:
+</p>
+<ol>
+    <li>Stop returning <code>.success(mock)</code> from <code>catch</code> blocks in <code>TerasliceAPIClient</code>; return <code>.failure(.networkError(error))</code> / <code>.failure(.decodingError(error))</code> — the two enum cases that are currently never constructed.</li>
+    <li>In <code>AppState.refreshData()</code>, on failure keep the previous <code>graphData</code> and set a new <code>lastError: String?</code> plus a <code>connectionState</code> enum.</li>
+    <li>Show it: a red/amber dot in the ornament next to the server name, and the <code>lastRefreshedAt</code> timestamp that is already tracked and never displayed.</li>
+    <li>Replace <code>print</code> with <a href="https://developer.apple.com/documentation/os/logger"><code>Logger</code></a> so device logs are usable.</li>
+</ol>
+
+<h2 id="six">6 · Move the solve off the main actor</h2>
+<p>
+    <code>runSimulation(iterations: 120)</code> runs synchronously inside a <code>@MainActor</code>
+    method. At the fixture's nine nodes it's invisible; on a real cluster with hundreds of connectors it
+    will drop frames, and dropped frames on a head-mounted display are unpleasant in a way they aren't
+    on a monitor. The shape of the fix:
+</p>
+<ul>
+    <li>Make <code>ForceSimulation3D</code> an <code>actor</code> (dropping <code>@unchecked Sendable</code>), or run the solve in <code>Task.detached</code> and return a plain <code>[String: SIMD3&lt;Float&gt;]</code>.</li>
+    <li><code>await</code> the result on the main actor and apply it to entities there — entity mutation must stay main-actor.</li>
+    <li>Then reduce the cost: distance cutoff or Barnes–Hut for repulsion, arrays instead of dictionary mutation, and incremental relayout when only a few nodes changed.</li>
+</ul>
+
+<h2 id="seven">7 · Present the jobs inspector</h2>
+<p>
+    <code>JobsInspectorView</code> is complete and unreachable; <code>showInspector</code> in the
+    ornament is declared and unused. Two designs, and the spatial one is better:
+</p>
+<ul>
+    <li><strong>Quick:</strong> a <code>.sheet(isPresented: $showInspector) { JobsInspectorView() }</code> mirroring the settings button — remembering to inject <code>.environment(appState)</code>.</li>
+    <li><strong>Better:</strong> a separate <code>WindowGroup(id: "jobs-inspector")</code> opened with <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openwindow"><code>openWindow(id:)</code></a>, so the list floats <em>beside</em> the volume instead of covering it. This is the visionOS advantage over a browser tab, and it's also what finally makes use of the unused <code>openWindow</code> already declared in <code>ControlOrnamentView</code>. Selecting a row could then set <code>selectedNodeID</code> and pulse the corresponding entity.</li>
+</ul>
+
+<h2 id="eight">8 · The immersive space</h2>
+<p>
+    The spec's headline idea — walk <em>inside</em> a pipeline — is untouched. It's a scene type plus a
+    projection change, not a rewrite:
+</p>
+<div class="codeblock">
+<div class="filename">Sketch — Teraslice3DApp.swift<span class="lines">—</span></div>
+<pre><code class="swift">ImmersiveSpace(id: "pipeline-immersive") {
+    PipelineImmersiveView()
+        .environment(appState)
+}
+.immersionStyle(selection: $immersionStyle, in: .mixed, .progressive, .full)</code></pre>
+</div>
+<ul>
+    <li>Open it with <code>@Environment(\.openImmersiveSpace)</code> (it's <code>async</code>: <code>await openImmersiveSpace(id:)</code>), close with <code>dismissImmersiveSpace</code>.</li>
+    <li><code>VolumetricProjection</code> is already the seam for this: pass a much larger <code>targetVolumeSpan</code> (say 4–6 m) and the same code fills a room instead of a box.</li>
+    <li>Node and pipe radii, and the 0.008–0.035 m clamps, all need a second set of constants at room scale.</li>
+    <li>Ornaments don't apply in an immersive space — controls become in-world attachments or stay in a separate window.</li>
+</ul>
+<div class="refs">
+    <span class="label">Needs</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/immersivespace"><code>ImmersiveSpace</code></a> · <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openimmersivespace"><code>openImmersiveSpace</code></a> · <a href="https://developer.apple.com/documentation/visionos/creating-fully-immersive-experiences">Creating fully immersive experiences</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10153/">WWDC24: Dive deep into volumes and immersive spaces</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10203/">Develop your first immersive app</a></li>
+        <li><span class="kind">hig</span><a href="https://developer.apple.com/design/human-interface-guidelines/immersive-experiences">HIG: Immersive experiences</a></li>
+    </ul>
+</div>
+
+<h2 id="nine">9 · Smaller items, in rough priority order</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Item</th><th>Where</th><th>What it needs</th></tr></thead>
+<tbody>
+<tr><td>Incremental entity diffing instead of full teardown</td><td><code>PipelineGraphEntity.updateGraph</code></td><td>Compare against <code>nodeEntities</code>/<code>linkEntities</code>; share one unit sphere / unit cylinder <code>MeshResource</code> and scale it.</td></tr>
+<tr><td>Fix the concurrency annotations</td><td><code>AppState</code>, <code>ForceSimulation3D</code></td><td><code>@MainActor</code> or <code>actor</code> instead of <code>@unchecked Sendable</code> (<a href="03-state-concurrency.html">ch. 03</a>).</td></tr>
+<tr><td>Delete duplicate logic</td><td><code>fitToVolume</code>; three copies of the status→colour switch</td><td>One <code>var color: Color</code> on <code>JobStatus</code>; remove <code>fitToVolume</code> and its test.</td></tr>
+<tr><td>Persist the server list</td><td><code>SettingsView</code>, <code>AppState</code></td><td><a href="https://developer.apple.com/documentation/swiftui/appstorage"><code>@AppStorage</code></a> with <code>JSONEncoder</code>, or <a href="https://developer.apple.com/documentation/swiftdata">SwiftData</a>. <code>ServerConfig</code> is already <code>Codable</code>.</td></tr>
+<tr><td>Validate URLs; confirm destructive actions</td><td><code>SettingsView</code></td><td><code>URL(string:)</code> check before adding; <code>.confirmationDialog</code> before clearing a shared cache.</td></tr>
+<tr><td>Emissive / glowing failing links</td><td><code>LinkEntity.material</code></td><td><a href="https://developer.apple.com/documentation/realitykit/physicallybasedmaterial"><code>PhysicallyBasedMaterial.emissiveColor</code></a>, or <a href="https://developer.apple.com/documentation/realitykit/shadergraphmaterial"><code>ShaderGraphMaterial</code></a> for animated flow.</td></tr>
+<tr><td>Spatial audio cue on failing jobs</td><td>new</td><td><a href="https://developer.apple.com/documentation/realitykit/spatialaudiocomponent"><code>SpatialAudioComponent</code></a> + <a href="https://developer.apple.com/documentation/realitykit/audiofileresource"><code>AudioFileResource</code></a> — locate a failure by ear, which the web app fundamentally can't do.</td></tr>
+<tr><td>Accessibility</td><td>everywhere</td><td><a href="https://developer.apple.com/documentation/realitykit/accessibilitycomponent"><code>AccessibilityComponent</code></a> on entities; labels on icon-only buttons; don't rely on colour alone for status.</td></tr>
+<tr><td>Grounding shadows / contact realism</td><td><code>PipelineGraphEntity</code></td><td><a href="https://developer.apple.com/documentation/realitykit/groundingshadowcomponent"><code>GroundingShadowComponent</code></a>.</td></tr>
+<tr><td>Test the HTTP layer and the shared formulas</td><td><code>Tests/</code></td><td><code>URLProtocol</code> stub; extract worker-scaling into a testable function (<a href="09-build-test.html">ch. 09</a>).</td></tr>
+<tr><td>SwiftUI previews</td><td><code>Views/</code></td><td><code>#Preview</code> blocks with mock <code>AppState</code> — big iteration-speed win, no simulator needed.</td></tr>
+<tr><td>Wire up the second scene, or delete it</td><td><code>Teraslice3DApp</code></td><td><code>openWindow(id: "volumetric-main")</code>, or drop the unused declaration (<a href="02-app-scenes.html">ch. 02</a>).</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout tip">
+    <div class="ico">🎯</div>
+    <div>
+        <span class="label">If you only do three things</span>
+        <p>
+            Add the tap gesture (§1) — it teaches you the visionOS input model and immediately makes the
+            app feel alive. Add attachments (§2) — labels are what make the visualisation legible, and
+            it's the piece with no web equivalent. Make failures visible (§5) — because a monitoring
+            tool that shows plausible fake data when it can't reach the cluster is worse than one that
+            shows nothing.
+        </p>
+    </div>
+</div>
+
+<div class="pager">
+    <a href="09-build-test.html"><span class="dir">← Previous</span><span class="ttl">09 · Build &amp; test</span></a>
+    <a class="next" href="11-references.html"><span class="dir">Next →</span><span class="ttl">11 · Reference index</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

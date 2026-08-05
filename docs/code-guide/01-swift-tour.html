@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · Swift tour, by example — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">01 · Swift tour, by example</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a class="current" href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 01 · Language</div>
+<h1>Swift tour, by example</h1>
+<p class="lede">
+    Every Swift language feature this codebase uses, in the order you'll trip over it, with the
+    relevant chapter of <em>The Swift Programming Language</em> alongside. Nothing here is
+    visionOS-specific — it is the vocabulary the next ten chapters assume.
+</p>
+
+<h2 id="four-kinds">Four kinds of type, and why each was chosen</h2>
+<p>
+    Swift has several ways to declare a type, and this app happens to use all the interesting ones.
+    The choice is not stylistic; it decides copying behaviour, identity, and thread safety.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Kind</th><th>Semantics</th><th>Used here for</th></tr></thead>
+<tbody>
+<tr><td><code>struct</code></td><td>Value type — copied on assignment, no identity, immutable unless <code>var</code></td><td><code>GraphNode</code>, <code>GraphLink</code>, <code>PipelineGraph</code>, <code>ServerConfig</code>, <code>Node3D</code>, <code>VolumetricProjection</code>, and every SwiftUI <code>View</code></td></tr>
+<tr><td><code>class</code></td><td>Reference type — shared, has identity, ARC-managed, supports inheritance</td><td><code>AppState</code> (one shared mutable model), <code>ForceSimulation3D</code> (mutated in place), and the RealityKit entities (they must subclass <code>Entity</code>)</td></tr>
+<tr><td><code>enum</code></td><td>Closed set of cases, optionally with raw values</td><td><code>ConnectorType</code>, <code>JobStatus</code>, <code>FilterMode</code>, <code>APIError</code></td></tr>
+<tr><td><code>actor</code></td><td>Reference type that serialises access to its own state</td><td><code>TerasliceAPIClient</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · the default is <code>struct</code></span>
+        <p>
+            Coming from Python or TypeScript, "everything is a class" is the habit to unlearn. In
+            Swift, reach for <code>struct</code> until you need shared mutable identity. SwiftUI
+            depends on this: views are cheap structs that get thrown away and rebuilt constantly,
+            which is only sane because copying one is nearly free.
+        </p>
+    </div>
+</div>
+
+<div class="refs">
+    <span class="label">References</span>
+    <ul>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/classesandstructures">Structures and Classes</a> — value vs reference, and the identity operator <code>===</code>.</li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/enumerations">Enumerations</a> — raw values, associated values, pattern matching.</li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency">Concurrency</a> — where <code>actor</code> is introduced.</li>
+    </ul>
+</div>
+
+<h2 id="properties">Properties: stored, computed, and lazily derived</h2>
+<p>
+    Swift blurs the line between "field" and "method" deliberately. A computed property looks like
+    data at the call site but runs code, which the models here use to derive values instead of
+    storing them:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/GraphData.swift<span class="lines">lines 25–36</span></div>
+<pre><code class="swift">public struct GraphNode: Identifiable, Codable, Hashable, Sendable {
+    public let id: String                        // stored, immutable
+    public let connectorType: ConnectorType
+
+    public var isIncoming: Bool {                // computed — no storage
+        id.lowercased().contains("incoming") || connectorType == .kafkaIncoming
+    }
+}</code></pre>
+</div>
+
+<p>
+    Three details in seven lines:
+</p>
+<ul>
+    <li><code>let</code> vs <code>var</code> is about mutability, not about storage. A computed property must be <code>var</code> because its value can change over time even though nothing is stored.</li>
+    <li>A single-expression body needs no <code>return</code> — the same implicit-return rule that makes SwiftUI view bodies readable.</li>
+    <li><code>.kafkaIncoming</code> with no type prefix: Swift infers the enum from context. You'll see this everywhere, e.g. <code>.zero</code> for a <code>SIMD3&lt;Float&gt;</code> and <code>.bottom</code> for an ornament anchor.</li>
+</ul>
+
+<p>
+    <code>GraphLink</code> pushes the idea further — its <code>id</code> is not stored at all, it is
+    synthesised from three other fields, which is what makes the link uniquely identifiable when one
+    job writes to several destinations:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/GraphLink — GraphData.swift<span class="lines">line 58</span></div>
+<pre><code class="swift">public var id: String { job_id + "_" + source + "_" + target }</code></pre>
+</div>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · naming</span>
+        <p>
+            <code>job_id</code> and <code>grafana_url</code> are snake_case, which is <em>not</em>
+            Swift style. They are named to match the backend JSON so the synthesised
+            <code>Codable</code> conformance needs no mapping. The idiomatic alternative — camelCase
+            properties plus explicit <code>CodingKeys</code> — is what <code>GraphNode</code> does for
+            <code>connector_type</code>. Chapter 04 covers the trade-off.
+        </p>
+    </div>
+</div>
+
+<h2 id="optionals">Optionals, and the four ways this code unwraps them</h2>
+<p>
+    <code>T?</code> means "a <code>T</code> or nothing", enforced by the compiler. There is no
+    implicit null. Every unwrapping idiom in Swift shows up in this codebase:
+</p>
+
+<div class="codeblock">
+<div class="filename">Idioms collected from across Sources/<span class="lines">—</span></div>
+<pre><code class="swift">// 1. guard let — early exit, keeps the happy path unindented
+guard let baseURL = serverConfig.baseURL,
+      let url = URL(string: "/api/pipeline_graph", relativeTo: baseURL) else {
+    return .failure(.invalidURL)
+}
+
+// 2. if let — conditional branch
+if let msg = cacheClearedMessage {
+    Text(msg)
+}
+
+// 3. optional chaining + ?? default
+try container.decodeIfPresent(Int.self, forKey: .workers) ?? 1
+nodes[key]?.force = .zero          // no-op if the key is absent
+
+// 4. try? — turn a thrown error into nil
+if let exContainer = try? container.nestedContainer(keyedBy: ExKeys.self, forKey: .ex) { … }</code></pre>
+</div>
+
+<p>
+    The <code>guard</code> form is the one to internalise. It reads as a precondition, binds names
+    for the rest of the scope, and forces you to write the failure path. Note that a single
+    <code>guard</code> can chain several bindings separated by commas — the whole thing succeeds or
+    the <code>else</code> runs.
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>nodes[key]?.force = .zero</code></span>
+        <p>
+            Dictionary subscripting returns an optional, so mutating through it needs a
+            <code>?</code>. This pattern appears dozens of times in
+            <code>ForceSimulation3D.tick()</code> and it is quietly expensive: each write is a
+            dictionary lookup <em>plus</em> a copy-on-write of the struct. Chapter 06 revisits it as
+            the main performance smell in the layout engine.
+        </p>
+    </div>
+</div>
+
+<div class="refs">
+    <span class="label">References</span>
+    <ul>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/optionalchaining">Optional Chaining</a></li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/errorhandling">Error Handling</a> — <code>throws</code>, <code>try</code>, <code>try?</code>, <code>defer</code>.</li>
+    </ul>
+</div>
+
+<h2 id="enums">Enums are where the domain logic lives</h2>
+<p>
+    Swift enums are closed sets, so a <code>switch</code> over one is exhaustive — add a case and the
+    compiler shows you every place that needs updating. This codebase uses them as small
+    state machines with behaviour attached:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/JobDetails.swift<span class="lines">lines 4–28</span></div>
+<pre><code class="swift">public enum JobStatus: String, Codable, Sendable, CaseIterable {
+    case running = "running"
+    case starting = "starting"
+    case stopped = "stopped"
+    // …
+    case unknown = "unknown"
+
+    public var isFailingOrFailed: Bool {
+        self == .failing || self == .failed
+    }
+
+    public var statusColorName: String {
+        switch self {
+        case .running: return "green"
+        case .stopped, .stopping: return "orange"
+        // …
+        }
+    }
+}</code></pre>
+</div>
+
+<ul>
+    <li><strong><code>: String</code></strong> gives each case a raw value, which is what makes <code>JobStatus(rawValue: "running")</code> work when decoding JSON. That initialiser is failable — it returns <code>JobStatus?</code> — hence the <code>?? .unknown</code> you see at every call site.</li>
+    <li><strong><code>CaseIterable</code></strong> synthesises <code>allCases</code>, used by <code>ForEach(FilterMode.allCases)</code> to build the segmented picker in the ornament.</li>
+    <li><strong>An <code>unknown</code> case</strong> is defensive design: the backend can add a status without crashing the app.</li>
+</ul>
+
+<p>
+    <code>APIError</code> shows the other flavour — cases carrying <em>associated values</em>, which
+    is Swift's answer to typed exceptions:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Services/TerasliceAPIClient.swift<span class="lines">lines 3–16</span></div>
+<pre><code class="swift">public enum APIError: Error, LocalizedError {
+    case invalidURL
+    case serverError(statusCode: Int)
+    case decodingError(Error)
+    case networkError(Error)
+
+    public var errorDescription: String? {
+        switch self {
+        case .serverError(let code): return "Server returned error code \(code)."
+        // …
+        }
+    }
+}</code></pre>
+</div>
+
+<p>
+    <code>case .serverError(let code)</code> is pattern matching: it tests the case
+    <em>and</em> pulls the payload out in one move. <code>"…\(code)."</code> is string
+    interpolation. Conforming to
+    <a href="https://developer.apple.com/documentation/foundation/localizederror"><code>LocalizedError</code></a>
+    is what makes <code>error.localizedDescription</code> produce your message instead of a generic one.
+</p>
+
+<h2 id="protocols">Protocols: the conformance list is the API</h2>
+<p>
+    Swift leans on protocols where other languages use inheritance. When you read a declaration like
+    <code>struct GraphNode: Identifiable, Codable, Hashable, Sendable</code>, each name buys a
+    specific capability — mostly for free, via compiler synthesis:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Protocol</th><th>What it unlocks</th><th>Where it's needed</th></tr></thead>
+<tbody>
+<tr><td><a href="https://developer.apple.com/documentation/swift/identifiable"><code>Identifiable</code></a></td><td>An <code>id</code> property SwiftUI uses for diffing</td><td><code>ForEach(appState.jobs)</code> with no <code>id:</code> argument</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/codable"><code>Codable</code></a></td><td>Synthesised JSON encode/decode</td><td><code>JSONDecoder().decode(PipelineGraph.self, from: data)</code></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/hashable"><code>Hashable</code></a></td><td><code>==</code> and hashing → usable as dictionary keys, <code>Set</code> members, and SwiftUI <code>.tag()</code> values</td><td><code>Picker</code> selection; <code>.onChange(of: appState.graphData)</code></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/sendable"><code>Sendable</code></a></td><td>Compiler-checked promise the value can cross concurrency domains safely</td><td>Passing graph data out of the <code>actor</code> API client</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/equatable"><code>Equatable</code></a></td><td><code>==</code></td><td><code>.onChange</code> needs it to know the graph changed</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+    The synthesis is the part that feels like magic and isn't: if every stored property of a struct is
+    itself <code>Codable</code>/<code>Hashable</code>/<code>Sendable</code>, the compiler writes the
+    conformance for you. You only hand-write it when the shape of the data disagrees with the shape
+    of your type — see <code>JobDetails.init(from:)</code> in chapter 04.
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>some View</code></span>
+        <p>
+            Every view here declares <code>public var body: some View</code>.
+            <code>some</code> is an <em>opaque return type</em>: "one specific concrete type that
+            conforms to <code>View</code>, and I'm not telling you which." It matters because SwiftUI
+            view bodies have absurd generic types like
+            <code>VStack&lt;TupleView&lt;(Image, Text, …)&gt;&gt;</code> — <code>some View</code> lets
+            you avoid writing them while keeping full static dispatch. Same trick with
+            <code>some Scene</code> in <code>Teraslice3DApp</code>.
+        </p>
+    </div>
+</div>
+
+<h2 id="generics">Generics you'll meet without writing any</h2>
+<p>
+    The app defines no generic types of its own, but consumes several. Recognising the notation is
+    enough:
+</p>
+<ul>
+    <li><code>Result&lt;PipelineGraph, APIError&gt;</code> — success-or-failure as a value rather than a thrown error. Consumed with <code>switch result { case .success(let g): … case .failure: … }</code>.</li>
+    <li><code>[String: Node3D]</code> — sugar for <code>Dictionary&lt;String, Node3D&gt;</code>; <code>[GraphLink]</code> is <code>Array&lt;GraphLink&gt;</code>.</li>
+    <li><code>SIMD3&lt;Float&gt;</code> — a three-lane vector of <code>Float</code>, hardware-accelerated. Chapter 06.</li>
+    <li><code>Task&lt;Void, Never&gt;</code> — a unit of async work returning nothing and never throwing.</li>
+    <li><code>@Environment(AppState.self)</code> — a metatype argument: the <em>type</em> itself passed as a value, which is how the environment is keyed.</li>
+</ul>
+
+<h2 id="closures">Closures, trailing syntax, and result builders</h2>
+<p>
+    Almost all SwiftUI and RealityKit code is closures with syntactic sugar on top. Three levels of
+    the same idea:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sugar levels, from plain Swift to SwiftUI DSL<span class="lines">—</span></div>
+<pre><code class="swift">// A closure as a normal argument
+Task(operation: { await refreshData() })
+
+// Trailing closure — the last argument moves outside the parens
+Task { await refreshData() }
+
+// Two trailing closures, labelled (RealityView's make: and update:)
+RealityView { content in
+    content.add(graphEntity)
+} update: { content in
+    // …
+}
+
+// Result builder — statements in this closure are *collected*, not executed in order
+VStack(spacing: 20) {
+    Image(systemName: "cube.transparent.fill")
+    Text("Teraslice 3D Volumetric Scene")
+}</code></pre>
+</div>
+
+<p>
+    That last form is a <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/advancedoperators">result builder</a>
+    (<code>@ViewBuilder</code>). The closure body is not imperative code; the compiler rewrites the
+    list of expressions into a single nested value. This is why you cannot drop an arbitrary
+    <code>for</code> loop or <code>print</code> into a view body but <em>can</em> use
+    <code>if</code>/<code>switch</code> and <code>ForEach</code> — the builder has overloads for those
+    and nothing else.
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>$0</code> and <code>_</code></span>
+        <p>
+            <code>graph.nodes.first { $0.isIncoming }</code> uses the implicit first-argument name.
+            <code>.onChange(of: graphData) { _, newValue in … }</code> uses <code>_</code> to
+            discard the old value. Both are pervasive in Apple-framework code.
+        </p>
+    </div>
+</div>
+
+<h2 id="attributes">Attributes and macros: the <code>@</code> vocabulary</h2>
+<p>
+    Everything with an <code>@</code> in this codebase, and what it actually does. Some are
+    compiler attributes; several are true Swift <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/macros">macros</a>
+    that expand into real code you can inspect in Xcode (right-click → Expand Macro).
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Spelling</th><th>Kind</th><th>Effect in this app</th></tr></thead>
+<tbody>
+<tr><td><code>@main</code></td><td>attribute</td><td>Marks <code>Teraslice3DApp</code> as the entry point; SwiftUI supplies <code>main()</code>. <a href="02-app-scenes.html">ch. 02</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/observation/observable()"><code>@Observable</code></a></td><td>macro</td><td>Rewrites <code>AppState</code>'s properties so SwiftUI can track reads per-property. <a href="03-state-concurrency.html">ch. 03</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/state"><code>@State</code></a></td><td>property wrapper</td><td>View-owned storage that survives view rebuilds (<code>appState</code>, <code>graphEntity</code>, <code>showSettings</code>).</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/environment"><code>@Environment</code></a></td><td>property wrapper</td><td>Reads a value injected by an ancestor (<code>AppState.self</code>, <code>\.dismiss</code>, <code>\.openWindow</code>).</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/mainactor"><code>@MainActor</code></a></td><td>global-actor attribute</td><td>Pins a method or type to the main thread — required for all UI and RealityKit mutation.</td></tr>
+<tr><td><code>@unchecked Sendable</code></td><td>attribute</td><td>"Trust me, this class is thread-safe." Used on <code>AppState</code> and <code>ForceSimulation3D</code>; see the warning in <a href="03-state-concurrency.html">ch. 03</a>.</td></tr>
+<tr><td><code>@testable import</code></td><td>attribute</td><td>Lets the test target see <code>internal</code> symbols. <a href="09-build-test.html">ch. 09</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="concurrency">async / await, in three sentences</h2>
+<p>
+    An <code>async</code> function may suspend; <code>await</code> marks each point where it might.
+    While suspended, the thread is free to do other work — no callbacks, no completion handlers, and
+    the code still reads top-to-bottom:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/App/AppState.swift<span class="lines">lines 50–61</span></div>
+<pre><code class="swift">@MainActor
+public func refreshData() async {
+    isRefreshing = true
+    defer { isRefreshing = false }        // runs on every exit path
+
+    let graphResult = await apiClient.fetchPipelineGraph(serverConfig: activeServer)
+    switch graphResult {
+    case .success(let graph): self.graphData = graph
+    case .failure:            self.graphData = MockGraphProvider.samplePipelineGraph()
+    }
+}</code></pre>
+</div>
+
+<p>
+    <code>defer</code> guarantees the spinner turns off however the function exits. <code>await</code>
+    on an <code>actor</code> method means "hop to that actor's isolation, run, hop back" — which is
+    exactly why <code>refreshData</code> must be <code>@MainActor</code>: the assignments to
+    <code>graphData</code> drive the UI. Chapter 03 unpacks actors, <code>Task</code>, cancellation,
+    and the Swift 6 data-race rules that shaped this file.
+</p>
+
+<h2 id="misc">Four smaller things you'll see immediately</h2>
+
+<h3>Conditional compilation</h3>
+<div class="codeblock">
+<div class="filename">Sources/Views/PipelineVolumeView.swift<span class="lines">lines 16–30</span></div>
+<pre><code class="swift">#if os(visionOS)
+RealityView { content in … }
+#else
+VStack(spacing: 20) { … }   // 2D placeholder so the package builds on macOS
+#endif</code></pre>
+</div>
+<p>
+    <code>#if</code> is resolved at compile time, so the macOS build never even sees the
+    <code>RealityView</code>. The same trick with <code>#if canImport(UIKit)</code> lets
+    <code>NodeEntity</code> alias <code>UIColor</code> or <code>NSColor</code> to one name:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/NodeEntity.swift<span class="lines">lines 3–9</span></div>
+<pre><code class="swift">#if canImport(UIKit)
+import UIKit
+typealias NodePlatformColor = UIColor
+#elseif canImport(AppKit)
+import AppKit
+typealias NodePlatformColor = NSColor
+#endif</code></pre>
+</div>
+
+<h3>Access control</h3>
+<p>
+    Almost every declaration is marked <code>public</code>. For a single app target that's redundant —
+    <code>internal</code> (the default) would compile identically. It's a habit from library code, and
+    harmless; the one place it matters is that the SwiftPM target is built as a module the test target
+    imports.
+</p>
+
+<h3>ARC and <code>[weak self]</code></h3>
+<div class="codeblock">
+<div class="filename">Sources/App/AppState.swift<span class="lines">lines 88–99</span></div>
+<pre><code class="swift">refreshTask = Task { [weak self] in
+    while !Task.isCancelled {
+        try? await Task.sleep(nanoseconds: UInt64((self?.autoRefreshInterval ?? 30.0) * 1_000_000_000))
+        if self?.isAutoRefreshEnabled == true { await self?.refreshData() }
+    }
+}</code></pre>
+</div>
+<p>
+    Swift manages class instances with <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting">automatic reference counting</a>.
+    A long-lived closure that captures <code>self</code> strongly, while <code>self</code> also holds
+    the closure (here via <code>refreshTask</code>), is a retain cycle — neither ever deallocates.
+    <code>[weak self]</code> breaks it, at the cost of every use becoming optional. Note also
+    <code>1_000_000_000</code>: underscores are legal digit separators.
+</p>
+
+<h3>Operator overloading via simd</h3>
+<div class="codeblock">
+<div class="filename">Sources/Services/ForceSimulation3D.swift<span class="lines">lines 125–126</span></div>
+<pre><code class="swift">node.velocity = (node.velocity + node.force) * damping
+node.position += node.velocity</code></pre>
+</div>
+<p>
+    These are <code>SIMD3&lt;Float&gt;</code> values: <code>+</code> is component-wise, <code>*</code>
+    by a scalar broadcasts. Vector maths reads like maths. Chapter 06 covers the rest of the
+    <code>simd</code> surface this app uses.
+</p>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/">The Swift Programming Language</a> — start with <em>A Swift Tour</em>, then Properties, Protocols, Concurrency.</li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/properties">Properties</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/protocols">Protocols</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/closures">Closures</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/generics">Generics</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/macros">Macros</a></li>
+        <li><span class="kind">guide</span><a href="https://www.swift.org/documentation/api-design-guidelines/">Swift API Design Guidelines</a> — the naming conventions this codebase mostly follows.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/swift-standard-library">Swift Standard Library</a> — <code>Result</code>, <code>Array</code>, <code>Dictionary</code>, <code>Task</code>.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10169/">WWDC24: Migrate your app to Swift 6</a> — why <code>Sendable</code> and actor isolation are suddenly everywhere.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="index.html"><span class="dir">← Previous</span><span class="ttl">00 · Overview &amp; map</span></a>
+    <a class="next" href="02-app-scenes.html"><span class="dir">Next →</span><span class="ttl">02 · App, scenes &amp; volumes</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

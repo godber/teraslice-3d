@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · RealityKit entities — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">07 · RealityKit entities</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a class="current" href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 07 · RealityKit</div>
+<h1>RealityKit entities</h1>
+<p class="lede">
+    Three files, 303 lines, and the whole 3D rendering layer. This is where you learn RealityKit's
+    entity-component model, mesh and material generation, collision and hover, and the quaternion
+    maths needed to point a cylinder at something.
+</p>
+
+<div class="chips">
+    <span class="chip hl">Entity</span>
+    <span class="chip hl">ModelComponent</span>
+    <span class="chip hl">MeshResource</span>
+    <span class="chip hl">SimpleMaterial</span>
+    <span class="chip">CollisionComponent</span>
+    <span class="chip">InputTargetComponent</span>
+    <span class="chip">HoverEffectComponent</span>
+    <span class="chip">simd_quatf</span>
+</div>
+
+<h2 id="ecs">RealityKit's mental model</h2>
+<p>
+    <a href="https://developer.apple.com/documentation/realitykit">RealityKit</a> is an
+    entity-component-system (ECS) renderer. Three nouns:
+</p>
+<ul>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/realitykit/entity"><code>Entity</code></a></strong>
+        — a node in the scene graph. It has a transform, a parent, children, and a bag of components.
+        By itself it draws nothing.
+    </li>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/realitykit/component"><code>Component</code></a></strong>
+        — a struct of data attached to an entity that gives it a capability:
+        <code>ModelComponent</code> makes it visible, <code>CollisionComponent</code> makes it
+        hit-testable, <code>InputTargetComponent</code> makes it interactive. You attach them with
+        <code>entity.components.set(…)</code>.
+    </li>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/realitykit/system"><code>System</code></a></strong>
+        — code that runs every frame over all entities holding a given set of components. This app
+        defines none; <a href="10-gaps-roadmap.html">chapter 10</a> explains why it probably should.
+    </li>
+</ul>
+<p>
+    If you know SceneKit or Three.js, the shift is that behaviour lives in components and systems
+    rather than in subclass overrides. Coordinates are right-handed, Y-up, metres, and each entity's
+    transform is relative to its parent.
+</p>
+
+<div class="diagram">
+<pre>
+  RealityView content
+    └── <b>PipelineGraphEntity</b>            ← Entity subclass, holds the dictionaries + simulation
+          ├── <b>NodeEntity</b> "kafka_data3:incoming-…"    ModelComponent(sphere, yellow)
+          │                                     CollisionComponent, InputTargetComponent,
+          │                                     HoverEffectComponent
+          ├── <b>NodeEntity</b> "es_data3:noaa-isd-v5-**"   ModelComponent(sphere, green) …
+          ├── <b>LinkEntity</b>  "job_src_dst"              ModelComponent(cylinder, green)
+          │                                     positioned at midpoint, rotated to the delta
+          └── … one child per node and per link
+</pre>
+</div>
+
+<h2 id="nodeentity">NodeEntity: a sphere per connector</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/NodeEntity.swift<span class="lines">lines 12–49</span></div>
+<pre><code class="swift">public final class NodeEntity: Entity, HasModel, HasCollision {
+    public let nodeID: String
+    public let connectorType: ConnectorType
+    public private(set) var radius: Float
+
+    @MainActor
+    public init(node: GraphNode, position: SIMD3&lt;Float&gt; = .zero, radius: Float = 0.04) {
+        self.nodeID = node.id
+        self.connectorType = node.connectorType
+        self.radius = radius
+        super.init()
+
+        updateMeshAndCollision(radius: radius, isIncoming: node.isIncoming)
+        self.position = position
+    }
+
+    @MainActor
+    public required init() { … }        // required by Entity
+
+    @MainActor
+    public func updateMeshAndCollision(radius: Float, isIncoming: Bool) {
+        self.radius = radius
+        let mesh = MeshResource.generateSphere(radius: radius)
+        let material = NodeEntity.material(for: self.connectorType, isIncoming: isIncoming)
+
+        self.model = ModelComponent(mesh: mesh, materials: [material])
+
+        // Enable spatial interaction (gaze + pinch hover)
+        let shape = ShapeResource.generateSphere(radius: radius * 1.2)
+        self.components.set(CollisionComponent(shapes: [shape]))
+        self.components.set(InputTargetComponent())
+        self.components.set(HoverEffectComponent())
+    }
+}</code></pre>
+</div>
+
+<h3>What each line buys you</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>API</th><th>Role</th></tr></thead>
+<tbody>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/meshresource/generatesphere(radius:)"><code>MeshResource.generateSphere(radius:)</code></a></td>
+    <td>Procedural geometry — no asset file needed. <code>MeshResource</code> also has <code>generateBox</code>, <code>generatePlane</code>, <code>generateCylinder</code>, <code>generateCone</code>, and <code>generateText</code>.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/simplematerial"><code>SimpleMaterial(color:isMetallic:)</code></a></td>
+    <td>The quick PBR-ish material: base colour, roughness, metallic. Takes a platform colour (<code>UIColor</code> on visionOS), hence the <code>typealias</code> dance from <a href="01-swift-tour.html">chapter 01</a>.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/modelcomponent"><code>ModelComponent(mesh:materials:)</code></a></td>
+    <td>The component that actually renders. <code>materials</code> is an array because a mesh can have multiple parts.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/shaperesource/generatesphere(radius:)"><code>ShapeResource.generateSphere(radius:)</code></a></td>
+    <td>A <em>collision</em> shape — separate from the render mesh, and deliberately 20% larger here so gaze targeting is forgiving.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/collisioncomponent"><code>CollisionComponent</code></a></td>
+    <td>Makes the entity hit-testable. Required for input: without it, gaze and taps pass straight through.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/inputtargetcomponent"><code>InputTargetComponent</code></a></td>
+    <td>Declares "this entity can receive input". Pairs with a SwiftUI gesture attached to the <code>RealityView</code>.</td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/realitykit/hovereffectcomponent"><code>HoverEffectComponent</code></a></td>
+    <td>The system highlight when you look at the entity. Rendered <em>outside</em> your process for privacy — your app never learns where the user is looking, which is a core visionOS design constraint.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout note">
+    <div class="ico">👁</div>
+    <div>
+        <span class="label">Why gaze data never reaches your code</span>
+        <p>
+            <code>HoverEffectComponent</code> exists because the compositor can highlight what you're
+            looking at without telling the app. An app only learns about a target when the user
+            <em>commits</em> — a pinch, which arrives as a tap gesture. Designing around that
+            (generous colliders, system hover effects, no "on hover, fetch details") is the platform
+            idiom, not a limitation to work around. visionOS 2 added
+            <a href="https://developer.apple.com/videos/play/wwdc2024/10152/">custom hover effects</a>
+            if the default highlight isn't enough.
+        </p>
+    </div>
+</div>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>HasModel</code>, <code>HasCollision</code>, and <code>required init()</code></span>
+        <p>
+            <code>HasModel</code> and <code>HasCollision</code> are convenience protocols from
+            RealityKit's first generation. Conforming gives you the <code>self.model = …</code> and
+            <code>self.collision = …</code> shorthand instead of
+            <code>components.set(ModelComponent(…))</code>. Both spellings appear in this one method —
+            <code>self.model</code> for the model, <code>components.set</code> for everything else. The
+            modern, uniformly-applicable idiom is <code>components.set</code>; if you're reading Apple
+            sample code from 2023 onward you'll rarely see <code>Has*</code>.
+        </p>
+        <p>
+            <code>public required init()</code> is inherited from <code>Entity</code>: RealityKit needs
+            to be able to construct entities generically (e.g. when loading a scene), so every subclass
+            must provide a no-argument initialiser. Note it fabricates dummy values
+            (<code>nodeID = "unknown"</code>) — a sign that <code>let</code> properties plus a required
+            init are a slightly awkward fit, and part of why component-based design is preferred:
+            a <code>NodeIDComponent</code> would avoid subclassing altogether.
+        </p>
+    </div>
+</div>
+
+<h3>Colour mapping</h3>
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/NodeEntity.swift<span class="lines">lines 51–72 (condensed)</span></div>
+<pre><code class="swift">public static func material(for connectorType: ConnectorType, isIncoming: Bool) -&gt; SimpleMaterial {
+    let color: NodePlatformColor
+    switch connectorType {
+    case .kafkaIncoming: color = .systemYellow
+    case .kafkaOther:    color = isIncoming ? .systemYellow : .systemBlue
+    case .elasticsearch: color = .systemGreen
+    case .dataGenerator: color = .systemPurple
+    case .noop, .unknown: color = .systemGray
+    }
+
+    var mat = SimpleMaterial(color: color, isMetallic: false)
+    mat.roughness = 0.3
+    return mat
+}</code></pre>
+</div>
+<p>
+    Same palette as the web frontend (yellow = incoming Kafka, blue = internal Kafka, green =
+    Elasticsearch), using
+    <a href="https://developer.apple.com/design/human-interface-guidelines/color">system colours</a> so
+    they stay consistent with platform UI. <code>roughness = 0.3</code> gives a slight sheen;
+    <code>isMetallic: false</code> keeps the colour readable rather than mirror-like — which matters in
+    passthrough, where a metallic sphere reflects an environment map that has nothing to do with your
+    actual room.
+</p>
+
+<h2 id="linkentity">LinkEntity: pointing a cylinder at a target</h2>
+<p>
+    Nodes are easy — a sphere has no orientation. Links are the interesting geometry problem: given two
+    endpoints, produce a cylinder that spans them.
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/LinkEntity.swift<span class="lines">lines 43–87 (condensed)</span></div>
+<pre><code class="swift">let delta = targetPos - sourcePos
+let distance = simd_length(delta)
+guard distance &gt; 0.001, !distance.isNaN else { return }
+
+// Worker scale matching web frontend: ((workers - 1) / (200 - 1)) * (20 - 1) + 1
+let workersClamped = Float(max(1, min(200, link.workers)))
+let workerScale = ((workersClamped - 1.0) / 199.0) * 19.0 + 1.0
+let basePipeRadius: Float = 0.005
+let rawRadius = basePipeRadius * workerScale * scale
+let radius = simd_clamp(rawRadius, 0.002, 0.015)
+
+let mesh = MeshResource.generateCylinder(height: distance, radius: radius)
+self.model = ModelComponent(mesh: mesh, materials: [LinkEntity.material(for: link.status)])
+
+// Position at midpoint between source and target
+self.position = (sourcePos + targetPos) * 0.5
+
+// Orient cylinder (default Y-axis) along vector delta with NaN safeguards
+let direction = simd_normalize(delta)
+let defaultUp = SIMD3&lt;Float&gt;(0, 1, 0)
+let dot = simd_clamp(simd_dot(defaultUp, direction), -1.0, 1.0)
+
+if dot &gt; 0.9999 {
+    self.orientation = simd_quatf(angle: 0, axis: SIMD3&lt;Float&gt;(1, 0, 0))       // already aligned
+} else if dot &lt; -0.9999 {
+    self.orientation = simd_quatf(angle: .pi, axis: SIMD3&lt;Float&gt;(1, 0, 0))     // antiparallel: flip
+} else {
+    let axis = simd_cross(defaultUp, direction)
+    let axisLen = simd_length(axis)
+    if axisLen &gt; 0.0001 {
+        self.orientation = simd_quatf(angle: acos(dot), axis: axis / axisLen)
+    } else { … }
+}
+
+let shape = ShapeResource.generateBox(size: SIMD3&lt;Float&gt;(radius * 3, max(0.01, distance), radius * 3))
+self.components.set(CollisionComponent(shapes: [shape]))</code></pre>
+</div>
+
+<h3>The rotation, unpacked</h3>
+<p>
+    <a href="https://developer.apple.com/documentation/realitykit/meshresource/generatecylinder(height:radius:)"><code>generateCylinder</code></a>
+    produces a cylinder centred at the origin, extending along <strong>+Y</strong>. To make it span
+    two points you need to (a) move it to the midpoint and (b) rotate +Y onto the direction vector.
+    That rotation is the standard "align one vector to another":
+</p>
+<ul>
+    <li><strong>Axis</strong> = <code>cross(up, direction)</code> — perpendicular to both, so rotating about it sweeps one onto the other.</li>
+    <li><strong>Angle</strong> = <code>acos(dot(up, direction))</code> — for unit vectors, the dot product <em>is</em> the cosine of the angle between them.</li>
+    <li><strong>Both degenerate cases</strong> must be special-cased: if the vectors are parallel the cross product is zero (no axis exists, and none is needed); if antiparallel, any perpendicular axis works, so the code picks X and rotates π.</li>
+    <li><strong><code>simd_clamp(dot, -1, 1)</code></strong> before <code>acos</code> — floating-point error can push a dot product to 1.0000001, and <code>acos</code> of that is <code>NaN</code>. A single <code>NaN</code> in a transform makes the entity vanish and is miserable to debug, which is why this file is so defensive about it.</li>
+</ul>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · quaternions in 30 seconds</span>
+        <p>
+            <a href="https://developer.apple.com/documentation/simd/simd_quatf"><code>simd_quatf</code></a>
+            represents a rotation as an axis plus an angle, stored as four floats. Compared with Euler
+            angles they compose cleanly (<code>q1 * q2</code>), interpolate smoothly
+            (<code>simd_slerp</code>), and never hit gimbal lock. RealityKit's
+            <a href="https://developer.apple.com/documentation/realitykit/transform"><code>Transform</code></a>
+            is exactly <code>(scale: SIMD3, rotation: simd_quatf, translation: SIMD3)</code>, and
+            <code>entity.orientation</code> / <code>entity.position</code> / <code>entity.scale</code>
+            are conveniences onto it. You rarely construct a quaternion by hand except in cases like
+            this one.
+        </p>
+    </div>
+</div>
+
+<h3>Thickness by worker count</h3>
+<p>
+    The formula is lifted verbatim from the web frontend — workers 1…200 map linearly to a scale of
+    1…20 — then multiplied by the volumetric scale factor and clamped to 2 mm…15 mm. The clamp is what
+    keeps a 200-worker job from becoming a fat sausage in a small volume, and
+    <code>testAdaptiveGeometryScaling</code> pins both ends of the range. Status drives colour through
+    the same <code>JobStatus</code> switch as the rest of the app: green running, blue starting, orange
+    stopped/stopping, red failing/failed, purple completed, grey unknown.
+</p>
+
+<div class="callout note">
+    <div class="ico">📦</div>
+    <div>
+        <span class="label">Why the collider is a box</span>
+        <p>
+            <code>ShapeResource</code> has no cylinder primitive, so the link's collider is a box
+            <code>radius*3</code> wide and <code>distance</code> tall — generously wide on purpose,
+            since a 2 mm pipe is nearly impossible to gaze-target precisely. The box inherits the
+            entity's rotation, so it stays aligned with the pipe.
+        </p>
+    </div>
+</div>
+
+<h2 id="graphentity">PipelineGraphEntity: the scene manager</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/PipelineGraphEntity.swift<span class="lines">lines 40–90 (condensed)</span></div>
+<pre><code class="swift">public final class PipelineGraphEntity: Entity {
+    public private(set) var nodeEntities: [String: NodeEntity] = [:]
+    public private(set) var linkEntities: [String: LinkEntity] = [:]
+    public private(set) var simulation = ForceSimulation3D()
+
+    @MainActor
+    public func updateGraph(_ graph: PipelineGraph) {
+        simulation.setup(graph: graph)
+        simulation.runSimulation(iterations: 120)
+
+        for (_, entity) in nodeEntities { entity.removeFromParent() }
+        for (_, entity) in linkEntities { entity.removeFromParent() }
+        nodeEntities.removeAll()
+        linkEntities.removeAll()
+
+        let projection = VolumetricProjection(nodes: Array(simulation.nodes.values),
+                                              targetVolumeSpan: 0.40)
+
+        for node in graph.nodes {
+            let simPos = simulation.nodes[node.id]?.position ?? .zero
+            let renderedPos = projection.project(simPos)
+            let radius = computeNodeRadius(for: node, projection: projection,
+                                           totalNodeCount: graph.nodes.count)
+            let nodeEntity = NodeEntity(node: node, position: renderedPos, radius: radius)
+            self.addChild(nodeEntity)
+            nodeEntities[node.id] = nodeEntity
+        }
+
+        for link in graph.links {
+            guard let simSourcePos = simulation.nodes[link.source]?.position,
+                  let simTargetPos = simulation.nodes[link.target]?.position else { continue }
+            let linkEntity = LinkEntity(link: link,
+                                        sourcePos: projection.project(simSourcePos),
+                                        targetPos: projection.project(simTargetPos),
+                                        scale: projection.scale)
+            self.addChild(linkEntity)
+            linkEntities[link.id] = linkEntity
+        }
+    }
+}</code></pre>
+</div>
+
+<p>Points of interest:</p>
+<ul>
+    <li>
+        <strong>Dictionaries keyed by domain id</strong> — the bridge between "graph data" and "scene
+        graph". Any future selection, filtering or animation code looks up entities here rather than
+        walking children.
+    </li>
+    <li>
+        <strong><code>removeFromParent()</code></strong> detaches an entity from the scene; dropping the
+        last reference then deallocates it. The rebuild is wholesale: every refresh throws away all
+        geometry and makes it again.
+    </li>
+    <li>
+        <strong>Links skip missing endpoints</strong> via <code>guard … else { continue }</code>, so a
+        malformed graph degrades to fewer pipes instead of crashing.
+    </li>
+    <li>
+        <strong>Density-aware node sizing:</strong>
+    </li>
+</ul>
+
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/PipelineGraphEntity.swift<span class="lines">lines 51–56</span></div>
+<pre><code class="swift">private func computeNodeRadius(for node: GraphNode, projection: VolumetricProjection,
+                               totalNodeCount: Int) -&gt; Float {
+    let densityFactor = 1.0 / sqrt(max(Float(totalNodeCount) / 10.0, 1.0))
+    let baseRadius: Float = node.isIncoming ? 0.18 : 0.12
+    return simd_clamp(baseRadius * projection.scale * densityFactor, 0.008, 0.035)
+}</code></pre>
+</div>
+<p>
+    Three effects multiplied together: incoming Kafka topics are 50% bigger (they're the entry points
+    you look for first), the projection scale keeps apparent size stable as the graph grows, and the
+    inverse-square-root density factor shrinks nodes further in crowded graphs. Clamped to 8 mm…35 mm so
+    they never vanish or dominate.
+</p>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · <code>stepSimulation()</code> is never called</span>
+        <p>
+            The class has a per-frame update method — tick the simulation with
+            <code>alpha: 0.1</code>, re-project, move node entities, rebuild link transforms — and
+            nothing in the app invokes it. The graph is therefore <em>static</em>: it snaps to its
+            solved layout on each refresh with no visible settling motion, which is a large part of the
+            charm of a force-directed graph.
+        </p>
+        <p>
+            To animate it you need a frame loop. Two idiomatic options: subscribe to
+            <a href="https://developer.apple.com/documentation/realitykit/sceneevents/update"><code>SceneEvents.Update</code></a>
+            from inside the <code>RealityView</code>'s <code>make:</code> closure, or write a proper
+            <a href="https://developer.apple.com/documentation/realitykit/implementing-systems-for-entities-in-a-scene">RealityKit <code>System</code></a>,
+            which is the ECS-native answer and gets you scheduling for free.
+        </p>
+    </div>
+</div>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · full teardown and mesh regeneration on every poll</span>
+        <p>
+            Every 30 seconds, all entities are destroyed and all meshes regenerated — even when the
+            topology is unchanged, which is the common case.
+            <code>MeshResource.generateSphere</code>/<code>generateCylinder</code> build vertex buffers
+            on the main thread, so this is both a hitch and a lost opportunity: with entities kept
+            alive you could animate positions and cross-fade status colours instead of snapping.
+        </p>
+        <p>
+            Two concrete improvements: (1) diff the incoming graph against
+            <code>nodeEntities</code>/<code>linkEntities</code> and only add/remove what changed — the
+            simulation already reconciles positions this way; (2) generate <em>one</em> unit-height
+            cylinder mesh and one unit sphere, then express per-link size purely as
+            <code>entity.scale</code>, so resizing a pipe becomes a transform update rather than new
+            geometry. Shared <code>MeshResource</code>s also let the renderer batch draws.
+        </p>
+    </div>
+</div>
+
+<h2 id="notused">RealityKit features this app hasn't reached yet</h2>
+<p>
+    Worth knowing they exist, since most of the roadmap in <code>AVP-SPEC.md</code> is one of these:
+</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>API</th><th>What it would give you here</th></tr></thead>
+<tbody>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/viewattachmentcomponent"><code>ViewAttachmentComponent</code></a> / <code>RealityView</code> attachments</td><td>Real SwiftUI views floating next to a node — the glass info cards the spec calls for. The proper way to render text and buttons in 3D.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/textcomponent"><code>TextComponent</code></a>, <code>MeshResource.generateText</code></td><td>Node labels. Currently nothing in the volume is labelled at all.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/billboardcomponent"><code>BillboardComponent</code></a></td><td>Keep labels/cards facing the viewer as they walk around the volume.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/opacitycomponent"><code>OpacityComponent</code></a></td><td>Dim non-matching nodes for search "highlight" mode instead of removing them.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/physicallybasedmaterial"><code>PhysicallyBasedMaterial</code></a>, <a href="https://developer.apple.com/documentation/realitykit/unlitmaterial"><code>UnlitMaterial</code></a></td><td><code>emissiveColor</code> for glowing failing links; unlit for flat, guaranteed-legible colour.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/shadergraphmaterial"><code>ShaderGraphMaterial</code></a> + <a href="https://developer.apple.com/documentation/realitycomposerpro">Reality Composer Pro</a></td><td>Custom shaders — animated flow along a pipe to show throughput, for example.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/groundingshadowcomponent"><code>GroundingShadowComponent</code></a></td><td>Contact shadows so the graph reads as sitting on your desk.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/imagebasedlightcomponent"><code>ImageBasedLightComponent</code></a></td><td>Custom lighting. Note this app adds no lights at all — in a volume, the system provides ambient image-based lighting from your room, which is why untouched <code>SimpleMaterial</code> spheres look correct.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit">RealityKit</a> · <a href="https://developer.apple.com/documentation/realitykit/entity"><code>Entity</code></a> · <a href="https://developer.apple.com/documentation/realitykit/entity/components"><code>Entity.components</code></a> · <a href="https://developer.apple.com/documentation/realitykit/transform"><code>Transform</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit/meshresource"><code>MeshResource</code></a> · <a href="https://developer.apple.com/documentation/realitykit/shaperesource"><code>ShapeResource</code></a> · <a href="https://developer.apple.com/documentation/realitykit/simplematerial"><code>SimpleMaterial</code></a> · <a href="https://developer.apple.com/documentation/realitykit/modelcomponent"><code>ModelComponent</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit/collisioncomponent"><code>CollisionComponent</code></a> · <a href="https://developer.apple.com/documentation/realitykit/inputtargetcomponent"><code>InputTargetComponent</code></a> · <a href="https://developer.apple.com/documentation/realitykit/hovereffectcomponent"><code>HoverEffectComponent</code></a> · <a href="https://developer.apple.com/documentation/realitykit/entity/generatecollisionshapes(recursive:)"><code>generateCollisionShapes</code></a></li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/visionos/understanding-the-realitykit-modular-architecture">Understanding RealityKit's modular architecture</a> — the ECS explanation, straight from Apple.</li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/visionos/adding-3d-content-to-your-app">Adding 3D content to your app</a> · <a href="https://developer.apple.com/documentation/realitykit/transforming-realitykit-entities-with-gestures">Transforming RealityKit entities with gestures</a></li>
+        <li><span class="kind">sample</span><a href="https://developer.apple.com/documentation/visionos/diorama">Diorama</a> · <a href="https://developer.apple.com/documentation/visionos/world">Hello World</a> — the two most useful Apple samples for this kind of app.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10080/">WWDC23: Build spatial experiences with RealityKit</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10081/">Enhance your spatial computing app with RealityKit</a> · <a href="https://developer.apple.com/videos/play/wwdc2025/274/">WWDC25: Better together — SwiftUI and RealityKit</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/simd/simd_quatf"><code>simd_quatf</code></a> · <a href="https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation">Quaternions and spatial rotation</a></li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="06-layout-simd.html"><span class="dir">← Previous</span><span class="ttl">06 · Layout math &amp; simd</span></a>
+    <a class="next" href="08-swiftui-ui.html"><span class="dir">Next →</span><span class="ttl">08 · SwiftUI spatial UI</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>visionOS Spatial UI Architecture Guide — Teraslice 3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b0d12;
+            --panel-bg: rgba(22, 26, 36, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --glass-glow: rgba(0, 199, 255, 0.15);
+            --text-main: #f0f4f8;
+            --text-muted: #94a3b8;
+            --accent-blue: #00c7ff;
+            --accent-purple: #af52de;
+            --accent-green: #34c759;
+            --accent-orange: #ff9500;
+            --accent-yellow: #ffcc00;
+            --code-bg: #0d1117;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(0, 199, 255, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 75%, rgba(175, 82, 222, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        /* --- Header --- */
+        header {
+            background: rgba(15, 18, 25, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #fff;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 199, 255, 0.2), rgba(175, 82, 222, 0.2));
+            border-color: rgba(0, 199, 255, 0.4);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, rgba(0, 199, 255, 0.35), rgba(175, 82, 222, 0.35));
+            border-color: rgba(0, 199, 255, 0.6);
+        }
+
+        /* --- Main Layout --- */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            gap: 24px;
+            padding: 24px 32px;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Left Column: Interactive Image Stage --- */
+        .stage-wrapper {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .stage-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .view-toggler {
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: var(--radius-md);
+            padding: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .toggle-btn {
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .toggle-btn.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Interactive Canvas Container */
+        .image-container {
+            position: relative;
+            width: 100%;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #11141b;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            user-select: none;
+        }
+
+        /* SVG Overlay for bounding boxes & lines */
+        .overlay-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hotspot-box {
+            position: absolute;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            pointer-events: auto;
+        }
+
+        .hotspot-box:hover, .hotspot-box.active {
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.25);
+        }
+
+        /* Hotspot Pins */
+        .hotspot-pin {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--pin-color, var(--accent-blue));
+            color: #000;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            transform: translate(-50%, -50%) scale(1);
+            cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+            z-index: 10;
+        }
+
+        .hotspot-pin::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            border: 2px solid var(--pin-color, var(--accent-blue));
+            opacity: 0;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .hotspot-pin:hover, .hotspot-pin.active {
+            transform: translate(-50%, -50%) scale(1.25);
+            box-shadow: 0 0 20px var(--pin-color, var(--accent-blue));
+            z-index: 20;
+        }
+
+        /* Tooltip */
+        .hotspot-tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%) translateY(6px);
+            background: rgba(15, 18, 26, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: #fff;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition-fast);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .hotspot-pin:hover .hotspot-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- Right Column: Component Inspector --- */
+        .inspector-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-header {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            backdrop-filter: blur(16px);
+        }
+
+        .panel-header h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Search & Filter Bar */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .filter-chip:hover, .filter-chip.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Component Cards List */
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .cards-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .cards-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .comp-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            backdrop-filter: blur(16px);
+            transition: var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .comp-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--card-color, var(--accent-blue));
+            opacity: 0.8;
+        }
+
+        .comp-card:hover, .comp-card.active {
+            border-color: var(--card-color, var(--accent-blue));
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px var(--card-glow, rgba(0, 199, 255, 0.15));
+            transform: translateX(2px);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--card-color, var(--accent-blue));
+            color: #000;
+            font-weight: 700;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .api-tag {
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--accent-blue);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .card-detail {
+            font-size: 12px;
+            color: #cbd5e1;
+            line-height: 1.4;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            border-left: 2px solid var(--card-color, var(--accent-blue));
+            margin-bottom: 14px;
+        }
+
+        /* Code Snippet Box */
+        .code-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .code-header {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 6px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .copy-btn:hover {
+            color: #fff;
+        }
+
+        pre {
+            padding: 12px;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #e2e8f0;
+        }
+
+        code .keyword { color: #ff79c6; }
+        code .type { color: #8be9fd; }
+        code .call { color: #50fa7b; }
+        code .string { color: #f1fa8c; }
+        code .comment { color: #6272a4; font-style: italic; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border-top: 1px solid var(--panel-border);
+            background: rgba(10, 12, 18, 0.9);
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-title-group">
+            <span class="brand-badge">visionOS</span>
+            <div>
+                <h1>Spatial UI Architecture Guide</h1>
+                <div class="subtitle">Interactive reference for Teraslice 3D Apple Vision Pro interface</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn" id="btnReset">Reset Selection</button>
+            <a href="images/avp-simple-graph-works-annotated.png" target="_blank" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download PNG
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="container">
+
+        <!-- Left Column: Interactive Image View -->
+        <div class="stage-wrapper">
+            <div class="stage-toolbar">
+                <div class="toolbar-title">
+                    <span class="status-dot"></span> Spatial UI Interactive Viewer
+                </div>
+                <div class="view-toggler">
+                    <button class="toggle-btn active" id="toggleInteractive">Interactive Hotspots</button>
+                    <button class="toggle-btn" id="toggleAnnotated">Static Annotated</button>
+                </div>
+            </div>
+
+            <div class="image-container" id="imageStage">
+                <!-- Image -->
+                <img id="mainImage" src="images/avp-simple-graph-works.png" alt="visionOS Graph Screenshot">
+
+                <!-- Dynamic SVG Bounding Box Overlays -->
+                <svg class="overlay-svg" viewBox="0 0 1382 1060" preserveAspectRatio="none">
+                    <!-- 2. Volumetric Window Glass BBox -->
+                    <rect id="rect-2" class="svg-bbox" x="148" y="56" width="1076" height="744" rx="36"
+                          fill="rgba(52, 199, 89, 0.05)" stroke="#34c759" stroke-width="2.5" stroke-dasharray="6,4"/>
+
+                    <!-- 3. 3D RealityView Content BBox -->
+                    <rect id="rect-3" class="svg-bbox" x="240" y="140" width="950" height="580" rx="16"
+                          fill="rgba(0, 199, 255, 0.05)" stroke="#00c7ff" stroke-width="2" stroke-dasharray="4,4"/>
+
+                    <!-- 4. Bottom Ornament BBox -->
+                    <rect id="rect-4" class="svg-bbox" x="120" y="770" width="1120" height="75" rx="38"
+                          fill="rgba(175, 82, 222, 0.08)" stroke="#af52de" stroke-width="2.5"/>
+
+                    <!-- 5. Window Drag Handle BBox -->
+                    <rect id="rect-5" class="svg-bbox" x="578" y="882" width="178" height="16" rx="8"
+                          fill="rgba(255, 204, 0, 0.2)" stroke="#ffcc00" stroke-width="2"/>
+                </svg>
+
+                <!-- Hotspot Pins -->
+                <!-- Pin 1: Passthrough -->
+                <div class="hotspot-pin" id="pin-1" style="left: 5.1%; top: 13.2%; --pin-color: var(--accent-orange);" data-id="1">
+                    1
+                    <div class="hotspot-tooltip">1. Passthrough / Environment</div>
+                </div>
+
+                <!-- Pin 2: Volumetric Window Glass -->
+                <div class="hotspot-pin" id="pin-2" style="left: 14.5%; top: 10.4%; --pin-color: var(--accent-green);" data-id="2">
+                    2
+                    <div class="hotspot-tooltip">2. Volumetric Window Glass</div>
+                </div>
+
+                <!-- Pin 3: 3D RealityView Content -->
+                <div class="hotspot-pin" id="pin-3" style="left: 56.4%; top: 36.8%; --pin-color: var(--accent-blue);" data-id="3">
+                    3
+                    <div class="hotspot-tooltip">3. 3D RealityView Content</div>
+                </div>
+
+                <!-- Pin 4: Bottom Ornament -->
+                <div class="hotspot-pin" id="pin-4" style="left: 20.3%; top: 76.2%; --pin-color: var(--accent-purple);" data-id="4">
+                    4
+                    <div class="hotspot-tooltip">4. Bottom Ornament</div>
+                </div>
+
+                <!-- Pin 5: Window Drag Handle -->
+                <div class="hotspot-pin" id="pin-5" style="left: 48.3%; top: 81.9%; --pin-color: var(--accent-yellow);" data-id="5">
+                    5
+                    <div class="hotspot-tooltip">5. Window Drag Handle</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Component Inspector -->
+        <div class="inspector-panel">
+            <div class="panel-header">
+                <h2>Component Inspector</h2>
+                <p>Click any numbered pin or component card to highlight its spatial position, API syntax, and visionOS guidelines.</p>
+                
+                <div class="filter-bar">
+                    <span class="filter-chip active" data-filter="all">All (5)</span>
+                    <span class="filter-chip" data-filter="window">Windowing</span>
+                    <span class="filter-chip" data-filter="spatial">3D Scene</span>
+                    <span class="filter-chip" data-filter="ornament">Ornaments</span>
+                </div>
+            </div>
+
+            <div class="cards-list">
+
+                <!-- Card 1: Passthrough -->
+                <div class="comp-card" id="card-1" data-id="1" data-category="window" style="--card-color: var(--accent-orange); --card-glow: rgba(255, 149, 0, 0.2);">
+                    <div class="card-top">
+                        <div class="card-title-group">
+                            <div class="card-badge">1</div>
+                            <div class="card-title">Passthrough / Environment</div>
+                        </div>
+                        <span class="api-tag">Spatial Context</span>
+                    </div>
+                    <div class="card-desc">The background canvas surrounding spatial windows. Displays real-world video feed or virtual environment.</div>
+                    <div class="card-detail">
+                        <strong>Spatial Behavior:</strong> Passthrough allows users to maintain full awareness of their physical surroundings while interacting with 3D volumes.
+                    </div>
+                    <div class="code-box">
+                        <div class="code-header">
+                            <span>SwiftUI Modifier</span>
+                            <button class="copy-btn" onclick="copyCode('code-1')">Copy</button>
+                        </div>
+                        <pre><code id="code-1"><span class="keyword">import</span> <span class="type">SwiftUI</span>
+
+<span class="comment">// Configure background immersion level</span>
+.<span class="call">preferredSurroundingsEffect</span>(.<span class="type">dark</span>) <span class="comment">// or .passthrough</span></code></pre>
+                    </div>
+                </div>
+
+                <!-- Card 2: Volumetric Window Glass -->
+                <div class="comp-card" id="card-2" data-id="2" data-category="window" style="--card-color: var(--accent-green); --card-glow: rgba(52, 199, 89, 0.2);">
+                    <div class="card-top">
+                        <div class="card-title-group">
+                            <div class="card-badge">2</div>
+                            <div class="card-title">Volumetric Window Glass</div>
+                        </div>
+                        <span class="api-tag">WindowGroup</span>
+                    </div>
+                    <div class="card-desc">Translucent spatial window container providing depth, specular highlights, and physical volumetric bounding bounds.</div>
+                    <div class="card-detail">
+                        <strong>Spatial Behavior:</strong> Volumetric windows extend along X, Y, and Z axes to bound 3D spatial content in meters.
+                    </div>
+                    <div class="code-box">
+                        <div class="code-header">
+                            <span>App.swift Structure</span>
+                            <button class="copy-btn" onclick="copyCode('code-2')">Copy</button>
+                        </div>
+                        <pre><code id="code-2"><span class="type">WindowGroup</span>(id: <span class="string">"GraphVolume"</span>) {
+    <span class="type">ContentView</span>()
+}
+.<span class="call">windowStyle</span>(.<span class="type">volumetric</span>)
+.<span class="call">defaultSize</span>(width: <span class="string">1.0</span>, height: <span class="string">0.8</span>, depth: <span class="string">0.8</span>, unit: .<span class="type">meters</span>)
+.<span class="call">glassBackgroundEffect</span>()</code></pre>
+                    </div>
+                </div>
+
+                <!-- Card 3: 3D RealityView Content -->
+                <div class="comp-card" id="card-3" data-id="3" data-category="spatial" style="--card-color: var(--accent-blue); --card-glow: rgba(0, 199, 255, 0.2);">
+                    <div class="card-top">
+                        <div class="card-title-group">
+                            <div class="card-badge">3</div>
+                            <div class="card-title">3D RealityView Content</div>
+                        </div>
+                        <span class="api-tag">RealityKit</span>
+                    </div>
+                    <div class="card-desc">Interactive 3D spatial scene hosting nodes, connection cylinders, meshes, material shaders, and spatial gestures.</div>
+                    <div class="card-detail">
+                        <strong>Spatial Behavior:</strong> Uses RealityKit entity component system (ECS) to position node spheres and cylinder edges in 3D coordinate space.
+                    </div>
+                    <div class="code-box">
+                        <div class="code-header">
+                            <span>RealityView.swift</span>
+                            <button class="copy-btn" onclick="copyCode('code-3')">Copy</button>
+                        </div>
+                        <pre><code id="code-3"><span class="type">RealityView</span> { content <span class="keyword">in</span>
+    <span class="keyword">let</span> root = <span class="type">Entity</span>()
+    <span class="comment">// Create nodes and connecting cylinders</span>
+    content.<span class="call">add</span>(root)
+} update: { content <span class="keyword">in</span>
+    <span class="comment">// Update state on hover/selection</span>
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Card 4: Bottom Ornament -->
+                <div class="comp-card" id="card-4" data-id="4" data-category="ornament" style="--card-color: var(--accent-purple); --card-glow: rgba(175, 82, 222, 0.2);">
+                    <div class="card-top">
+                        <div class="card-title-group">
+                            <div class="card-badge">4</div>
+                            <div class="card-title">Bottom Ornament</div>
+                        </div>
+                        <span class="api-tag">.ornament()</span>
+                    </div>
+                    <div class="card-desc">Floating control bar attached relative to window edges without encroaching on 3D volumetric content space.</div>
+                    <div class="card-detail">
+                        <strong>Spatial Behavior:</strong> Ornaments float in front of windows and automatically adjust depth relative to the main window glass.
+                    </div>
+                    <div class="code-box">
+                        <div class="code-header">
+                            <span>View Modifier</span>
+                            <button class="copy-btn" onclick="copyCode('code-4')">Copy</button>
+                        </div>
+                        <pre><code id="code-4">.<span class="call">ornament</span>(
+    visibility: .<span class="type">visible</span>,
+    attachmentAnchor: .<span class="type">bottom</span>,
+    contentAlignment: .<span class="type">center</span>
+) {
+    <span class="type">ControlToolbarView</span>()
+        .<span class="call">glassBackgroundEffect</span>()
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Card 5: Window Drag Handle -->
+                <div class="comp-card" id="card-5" data-id="5" data-category="window" style="--card-color: var(--accent-yellow); --card-glow: rgba(255, 204, 0, 0.2);">
+                    <div class="card-top">
+                        <div class="card-title-group">
+                            <div class="card-badge">5</div>
+                            <div class="card-title">Window Drag Handle</div>
+                        </div>
+                        <span class="api-tag">System Affordance</span>
+                    </div>
+                    <div class="card-desc">System spatial manipulation pill. Provides the pinch-and-drag target for repositioning or moving windows in 3D physical space.</div>
+                    <div class="card-detail">
+                        <strong>Spatial Behavior:</strong> Managed directly by visionOS. Responds to direct gaze + pinch gestures to translate windows in 6DOF.
+                    </div>
+                    <div class="code-box">
+                        <div class="code-header">
+                            <span>System Managed</span>
+                            <button class="copy-btn" onclick="copyCode('code-5')">Copy</button>
+                        </div>
+                        <pre><code id="code-5"><span class="comment">// Automatically provided by visionOS</span>
+<span class="comment">// No custom code required for standard windows</span></code></pre>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Teraslice 3D — Apple Vision Pro Architecture Documentation • Generated for <a href="file:///Users/godber/ClaudeWorkspace/teraslice-3d/scratch/avp-simple-graph-works.png">avp-simple-graph-works.png</a></p>
+    </footer>
+
+    <!-- JavaScript Interactions -->
+    <script>
+        const pins = document.querySelectorAll('.hotspot-pin');
+        const cards = document.querySelectorAll('.comp-card');
+        const bboxes = document.querySelectorAll('.svg-bbox');
+        const btnReset = document.getElementById('btnReset');
+        const filterChips = document.querySelectorAll('.filter-chip');
+        const mainImage = document.getElementById('mainImage');
+        const toggleInteractive = document.getElementById('toggleInteractive');
+        const toggleAnnotated = document.getElementById('toggleAnnotated');
+        const overlaySvg = document.querySelector('.overlay-svg');
+
+        // Toggle static annotated vs interactive hotspots
+        toggleInteractive.addEventListener('click', () => {
+            toggleInteractive.classList.add('active');
+            toggleAnnotated.classList.remove('active');
+            mainImage.src = 'images/avp-simple-graph-works.png';
+            pins.forEach(p => p.style.display = 'flex');
+            overlaySvg.style.display = 'block';
+        });
+
+        toggleAnnotated.addEventListener('click', () => {
+            toggleAnnotated.classList.add('active');
+            toggleInteractive.classList.remove('active');
+            mainImage.src = 'images/avp-simple-graph-works-annotated.png';
+            pins.forEach(p => p.style.display = 'none');
+            overlaySvg.style.display = 'none';
+        });
+
+        // Select component function
+        function selectComponent(id) {
+            pins.forEach(p => p.classList.toggle('active', p.dataset.id == id));
+            cards.forEach(c => {
+                const isActive = c.dataset.id == id;
+                c.classList.toggle('active', isActive);
+                if (isActive) {
+                    c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+            bboxes.forEach(b => {
+                b.style.strokeWidth = (b.id === `rect-${id}`) ? '4' : (b.id === 'rect-2' || b.id === 'rect-4' ? '2.5' : '2');
+                b.style.opacity = (b.id === `rect-${id}` || !id) ? '1' : '0.3';
+            });
+        }
+
+        // Event listeners for Pins
+        pins.forEach(pin => {
+            pin.addEventListener('mouseenter', () => selectComponent(pin.dataset.id));
+            pin.addEventListener('click', () => selectComponent(pin.dataset.id));
+        });
+
+        // Event listeners for Cards
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => selectComponent(card.dataset.id));
+            card.addEventListener('click', () => selectComponent(card.dataset.id));
+        });
+
+        // Reset Selection
+        btnReset.addEventListener('click', () => {
+            pins.forEach(p => p.classList.remove('active'));
+            cards.forEach(c => c.classList.remove('active'));
+            bboxes.forEach(b => {
+                b.style.strokeWidth = (b.id === 'rect-2' || b.id === 'rect-4') ? '2.5' : '2';
+                b.style.opacity = '1';
+            });
+        });
+
+        // Category Filter
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const cat = chip.dataset.filter;
+
+                cards.forEach(card => {
+                    if (cat === 'all' || card.dataset.category === cat) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Copy Code function
+        function copyCode(elementId) {
+            const codeText = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(codeText).then(() => {
+                alert('Code snippet copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy code: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

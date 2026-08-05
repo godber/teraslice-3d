@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 · State &amp; concurrency — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">03 · State &amp; concurrency</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a class="current" href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 03 · Observation &amp; Swift concurrency</div>
+<h1>State &amp; concurrency</h1>
+<p class="lede">
+    <code>AppState</code> is 109 lines and touches nearly every modern Swift feature at once:
+    the <code>@Observable</code> macro, the SwiftUI environment, actors, <code>Task</code>s,
+    cancellation, and the Swift 6 data-race rules. It also contains this app's most instructive
+    rough edges.
+</p>
+
+<div class="chips">
+    <span class="chip hl">Observation</span>
+    <span class="chip hl">@Observable</span>
+    <span class="chip hl">@State / @Environment</span>
+    <span class="chip hl">Task</span>
+    <span class="chip">@MainActor</span>
+    <span class="chip">Sendable</span>
+    <span class="chip">Bindable</span>
+</div>
+
+<h2 id="observable">The <code>@Observable</code> model</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/App/AppState.swift<span class="lines">lines 12–33</span></div>
+<pre><code class="swift">@Observable
+public final class AppState: @unchecked Sendable {
+    public var activeServer: ServerConfig = .defaultLocal
+    public var serverList: [ServerConfig] = [.defaultLocal, .mockDataServer]
+
+    public var graphData: PipelineGraph = MockGraphProvider.samplePipelineGraph()
+    public var jobs: [JobDetails] = MockGraphProvider.sampleJobDetails()
+    public var serverVersion: String = "Connecting..."
+
+    public var selectedNodeID: String? = nil
+    public var selectedLinkID: String? = nil
+
+    public var searchText: String = ""
+    public var filterMode: FilterMode = .highlight
+
+    public var isAutoRefreshEnabled: Bool = true
+    public var autoRefreshInterval: TimeInterval = 30.0
+    public var isRefreshing: Bool = false
+    public var lastRefreshedAt: Date? = nil
+
+    private let apiClient = TerasliceAPIClient()
+    private var refreshTask: Task&lt;Void, Never&gt;? = nil
+}</code></pre>
+</div>
+
+<p>
+    <a href="https://developer.apple.com/documentation/observation/observable()"><code>@Observable</code></a>
+    is a macro from the <a href="https://developer.apple.com/documentation/observation">Observation</a>
+    framework (Swift 5.9 / iOS 17 / visionOS 1 and later). At compile time it rewrites every stored
+    property into a computed property that reports reads and writes to an
+    <code>ObservationRegistrar</code>. The consequences:
+</p>
+
+<ul>
+    <li>
+        <strong>No <code>@Published</code>, no <code>ObservableObject</code>, no
+        <code>objectWillChange</code>.</strong> Plain <code>var</code>s are enough. If you read older
+        SwiftUI tutorials you'll see the Combine-based pattern; this is its replacement.
+    </li>
+    <li>
+        <strong>Tracking is per-property and per-view.</strong> A view that reads only
+        <code>appState.isRefreshing</code> is not invalidated when <code>graphData</code> changes.
+        With the old <code>ObservableObject</code>, any published change redrew every observer. That
+        granularity matters here: rebuilding the RealityKit scene is expensive.
+    </li>
+    <li>
+        <strong>Tracking follows actual reads.</strong> SwiftUI records which properties a
+        <code>body</code> touched during evaluation, so a property read inside an
+        <code>if</code> branch that didn't run is not tracked.
+    </li>
+</ul>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>final class</code></span>
+        <p>
+            <code>final</code> forbids subclassing, which lets the compiler use direct dispatch instead
+            of a vtable lookup. Default to <code>final</code> on classes you don't intend to subclass —
+            it is both faster and clearer.
+        </p>
+    </div>
+</div>
+
+<h2 id="injection">Getting the model into views</h2>
+<p>
+    Three property wrappers, three different jobs. Getting these straight is most of learning SwiftUI
+    data flow:
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Wrapper</th><th>Means</th><th>In this app</th></tr></thead>
+<tbody>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/swiftui/state"><code>@State</code></a></td>
+    <td>This view <em>owns</em> the value; it survives body re-evaluation</td>
+    <td><code>appState</code> in the App; <code>graphEntity</code>, <code>showSettings</code>, <code>newServerName</code> in views</td>
+</tr>
+<tr>
+    <td><code>.environment(_:)</code></td>
+    <td>Injects a value for the whole subtree</td>
+    <td><code>PipelineVolumeView().environment(appState)</code></td>
+</tr>
+<tr>
+    <td><a href="https://developer.apple.com/documentation/swiftui/environment"><code>@Environment</code></a></td>
+    <td>Reads a value an ancestor injected — by type, or by key path for built-ins</td>
+    <td><code>@Environment(AppState.self)</code>, <code>@Environment(\.dismiss)</code>, <code>@Environment(\.openWindow)</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="codeblock">
+<div class="filename">Injection (Teraslice3DApp.swift) and retrieval (ControlOrnamentView.swift)<span class="lines">—</span></div>
+<pre><code class="swift">// Owner — created once, lives as long as the app
+@State private var appState = AppState()
+
+WindowGroup {
+    PipelineVolumeView()
+        .environment(appState)          // put it in the environment
+}
+
+// Consumer — anywhere below, no constructor plumbing
+struct ControlOrnamentView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.openWindow) private var openWindow
+}</code></pre>
+</div>
+
+<div class="callout note">
+    <div class="ico">⚠️</div>
+    <div>
+        <span class="label">Ornaments and sheets need re-injection</span>
+        <p>
+            <code>PipelineVolumeView</code> writes
+            <code>.ornament(…) { ControlOrnamentView().environment(appState) }</code> — passing the
+            state again explicitly. Ornaments, sheets and other <em>presentations</em> may be hosted
+            outside the presenting view's environment chain, so re-injecting is the safe habit. Note
+            that <code>SettingsView</code> and <code>JobsInspectorView</code> read
+            <code>@Environment(AppState.self)</code> but are presented by
+            <code>.sheet { SettingsView() }</code> <em>without</em> re-injection — a crash risk worth
+            checking on device, since a missing environment value of this kind traps at runtime.
+        </p>
+    </div>
+</div>
+
+<h3><code>Bindable</code>: read-write access to an observable</h3>
+<div class="codeblock">
+<div class="filename">Sources/Views/ControlOrnamentView.swift<span class="lines">lines 38, 47</span></div>
+<pre><code class="swift">TextField("Search nodes or jobs...", text: Bindable(appState).searchText)
+
+Picker("Filter Mode", selection: Bindable(appState).filterMode) { … }</code></pre>
+</div>
+<p>
+    A <code>TextField</code> needs a <code>Binding&lt;String&gt;</code> — a two-way handle, not a
+    value. <a href="https://developer.apple.com/documentation/swiftui/bindable"><code>Bindable</code></a>
+    manufactures bindings to an <code>@Observable</code> object's properties. The more common spelling
+    declares it once as a property, then uses <code>$</code>:
+</p>
+<div class="codeblock">
+<div class="filename">Idiomatic equivalent<span class="lines">—</span></div>
+<pre><code class="swift">@Environment(AppState.self) private var appState
+
+var body: some View {
+    @Bindable var state = appState        // or a stored @Bindable property
+    TextField("Search…", text: $state.searchText)
+}</code></pre>
+</div>
+<p>
+    Both compile; <code>Bindable(appState).searchText</code> just constructs the wrapper inline each
+    time. Compare with <code>$showSettings</code> in the same file — <code>$</code> on a
+    <code>@State</code> property is the same idea for view-local storage.
+</p>
+
+<h2 id="refresh">The refresh pipeline</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/App/AppState.swift<span class="lines">lines 35–99 (condensed)</span></div>
+<pre><code class="swift">public init() {
+    Task { @MainActor in
+        await refreshData()
+        startAutoRefreshTask()
+    }
+}
+
+@MainActor
+public func refreshData() async {
+    isRefreshing = true
+    defer { isRefreshing = false }
+
+    let graphResult = await apiClient.fetchPipelineGraph(serverConfig: activeServer)
+    switch graphResult {
+    case .success(let graph): self.graphData = graph
+    case .failure:            self.graphData = MockGraphProvider.samplePipelineGraph()
+    }
+
+    let jobsResult = await apiClient.fetchJobs(serverConfig: activeServer)
+    // … same shape …
+
+    self.serverVersion = await apiClient.fetchVersion(serverConfig: activeServer)
+    self.lastRefreshedAt = Date()
+}
+
+private func startAutoRefreshTask() {
+    refreshTask?.cancel()
+    refreshTask = Task { [weak self] in
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: UInt64((self?.autoRefreshInterval ?? 30.0) * 1_000_000_000))
+            if Task.isCancelled { break }
+            if self?.isAutoRefreshEnabled == true { await self?.refreshData() }
+        }
+    }
+}
+
+deinit { refreshTask?.cancel() }</code></pre>
+</div>
+
+<h3>What each concurrency construct is doing</h3>
+<ul>
+    <li>
+        <strong><a href="https://developer.apple.com/documentation/swift/task"><code>Task { … }</code></a></strong>
+        — starts unstructured async work from a synchronous context. It runs concurrently with the
+        caller and is not awaited, so <code>init</code> returns immediately while the fetch continues.
+    </li>
+    <li>
+        <strong><code>Task { @MainActor in … }</code></strong> — the closure runs on the main actor.
+        Needed because everything it touches is main-actor-isolated.
+    </li>
+    <li>
+        <strong><code>@MainActor func refreshData()</code></strong> — the
+        <a href="https://developer.apple.com/documentation/swift/mainactor">main actor</a> is a global
+        actor representing the main thread. All UI and all RealityKit entity mutation must happen here.
+        Marking the method (rather than sprinkling <code>DispatchQueue.main.async</code>) is the modern
+        way.
+    </li>
+    <li>
+        <strong>Cooperative cancellation</strong> — <code>Task.isCancelled</code> is polled;
+        <code>Task.sleep</code> also throws on cancellation, which is what the <code>try?</code>
+        swallows. Nothing is pre-empted: cancellation in Swift is always a request the task must
+        honour.
+    </li>
+    <li>
+        <strong><code>await apiClient.…</code></strong> — <code>apiClient</code> is an
+        <code>actor</code>, so each call hops to the client's isolation, runs there, and returns. The
+        actor guarantees its own state is never touched concurrently.
+    </li>
+</ul>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · sleeping the modern way</span>
+        <p>
+            <code>Task.sleep(nanoseconds:)</code> works, but the current API is
+            <a href="https://developer.apple.com/documentation/swift/task/sleep(for:tolerance:clock:)"><code>Task.sleep(for: .seconds(30))</code></a>,
+            which takes a <code>Duration</code> and avoids the manual
+            <code>* 1_000_000_000</code>. For a repeating timer that stays aligned to a schedule,
+            <code>AsyncTimerSequence</code> from
+            <a href="https://github.com/apple/swift-async-algorithms">swift-async-algorithms</a>, or a
+            <code>for await _ in …</code> loop over an
+            <a href="https://developer.apple.com/documentation/swift/asyncsequence"><code>AsyncSequence</code></a>,
+            reads better than <code>while</code> + <code>sleep</code>.
+        </p>
+    </div>
+</div>
+
+<h2 id="dataflow">End-to-end: one refresh</h2>
+<div class="diagram">
+<pre>
+  timer fires (30 s)          user taps ⟳ in the ornament
+         │                              │
+         └──────────────┬───────────────┘
+                        ▼
+             <b>AppState.refreshData()</b>  @MainActor
+                        │  await
+                        ▼
+          <b>TerasliceAPIClient</b>  (actor, off the main thread)
+             URLSession ──► /api/pipeline_graph ──► JSONDecoder
+                        │  Result&lt;PipelineGraph, APIError&gt;
+                        ▼
+             appState.graphData = graph        ← observation records a write
+                        │
+                        ▼
+   SwiftUI invalidates views that <i>read</i> graphData
+                        │
+                        ▼
+    <b>PipelineVolumeView</b> .onChange(of: appState.graphData)
+                        │
+                        ▼
+      <b>PipelineGraphEntity.updateGraph()</b>  → simulation → projection → meshes
+</pre>
+</div>
+
+<p>
+    Note the hop pattern: main actor → actor → main actor. The values crossing that boundary
+    (<code>ServerConfig</code> in, <code>PipelineGraph</code> out) are all <code>Sendable</code>
+    structs, which is what makes the compiler accept it.
+</p>
+
+<h2 id="sendable">Swift 6 strict concurrency, and the escape hatch used here</h2>
+<p>
+    Both the Xcode target (<code>SWIFT_VERSION = 6.0</code>) and the package
+    (<code>swift-tools-version: 6.0</code>) opt into Swift 6 language mode, where data-race safety is
+    a compile-time error rather than a warning. Two declarations in this codebase sidestep it:
+</p>
+
+<div class="codeblock">
+<div class="filename">AppState.swift line 13 · ForceSimulation3D.swift line 20<span class="lines">—</span></div>
+<pre><code class="swift">public final class AppState: @unchecked Sendable { … }
+public final class ForceSimulation3D: @unchecked Sendable { … }</code></pre>
+</div>
+
+<p>
+    <code>Sendable</code> means "safe to pass between concurrency domains".
+    <a href="https://developer.apple.com/documentation/swift/sendable">A mutable class is not
+    <code>Sendable</code></a>, so the compiler would reject passing <code>AppState</code> into a
+    <code>Task</code>. <code>@unchecked</code> disables the check without providing the safety — it is
+    a promise <em>you</em> are making, and here nothing enforces it.
+</p>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · <code>@unchecked Sendable</code> is papering over the design</span>
+        <p>
+            The honest annotation for <code>AppState</code> is
+            <code>@MainActor @Observable final class AppState</code>. That makes it
+            implicitly <code>Sendable</code>, removes the need for the per-method
+            <code>@MainActor</code> attributes, and lets the compiler prove the UI state is only
+            touched on the main thread. <code>ForceSimulation3D</code> is mutated only from
+            <code>@MainActor</code> methods on <code>PipelineGraphEntity</code>, so the same applies —
+            or make it a proper <code>actor</code> if you later want layout to run off the main thread
+            (see <a href="06-layout-simd.html">chapter 06</a>, where the 120-iteration solve currently
+            blocks the main thread).
+        </p>
+    </div>
+</div>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · two entry points to the same startup work</span>
+        <p>
+            <code>init()</code> already fires <code>refreshData()</code> and starts the auto-refresh
+            loop. <code>start()</code> does the same thing again and is called from
+            <code>.task { appState.start() }</code> in the non-visionOS branch of
+            <code>PipelineVolumeView</code>. On macOS both run, so the first fetch happens twice.
+            <code>startAutoRefreshTask()</code> cancels any previous task, so you don't get two timers
+            — but doing work in <code>init</code> is worth avoiding on principle. The SwiftUI-native
+            place for startup work is
+            <a href="https://developer.apple.com/documentation/swiftui/view-fundamentals"><code>.task { }</code></a>,
+            which also cancels automatically when the view disappears.
+        </p>
+    </div>
+</div>
+
+<h3>Unused state worth knowing about</h3>
+<p>
+    Four properties are declared, populated by the UI, and read by nothing:
+    <code>selectedNodeID</code>, <code>selectedLinkID</code>, <code>searchText</code> (bound to the
+    search field), and <code>filterMode</code> (bound to the picker). <code>matchesSearch(_:)</code>
+    at the bottom of the file is the intended helper and is never called:
+</p>
+<div class="codeblock">
+<div class="filename">Sources/App/AppState.swift<span class="lines">lines 105–108</span></div>
+<pre><code class="swift">public func matchesSearch(_ text: String) -&gt; Bool {
+    guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+    return text.localizedCaseInsensitiveContains(searchText)
+}</code></pre>
+</div>
+<p>
+    So typing in the search box changes state and re-runs bodies, but no geometry responds.
+    <a href="10-gaps-roadmap.html">Chapter 10</a> sketches how to wire it into the RealityKit layer.
+</p>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/observation">Observation framework</a> · <a href="https://developer.apple.com/documentation/observation/observable()"><code>@Observable</code> macro</a> · <a href="https://developer.apple.com/documentation/observation/withobservationtracking(_:onchange:)"><code>withObservationTracking</code></a> (the primitive under SwiftUI's tracking)</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/state-and-data-flow">SwiftUI: State and data flow</a> — the umbrella page for <code>@State</code>, <code>@Binding</code>, <code>@Environment</code>.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro">Migrating from <code>ObservableObject</code> to <code>@Observable</code></a> — useful because most tutorials online predate it.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10149/">WWDC23: Discover Observation in SwiftUI</a></li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency">TSPL: Concurrency</a> — tasks, actors, isolation, <code>Sendable</code>.</li>
+        <li><span class="kind">guide</span><a href="https://www.swift.org/migration/documentation/migrationguide/">Swift 6 Migration Guide</a> — the canonical answer to "why won't this compile any more".</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/adoptingswift6">Adopting Swift 6</a> · <span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10169/">WWDC24: Migrate your app to Swift 6</a></li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="02-app-scenes.html"><span class="dir">← Previous</span><span class="ttl">02 · App, scenes &amp; volumes</span></a>
+    <a class="next" href="04-models-json.html"><span class="dir">Next →</span><span class="ttl">04 · Models &amp; Codable</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

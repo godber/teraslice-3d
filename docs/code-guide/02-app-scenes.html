@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 · App, scenes &amp; volumes — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">02 · App, scenes &amp; volumes</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a class="current" href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 02 · SwiftUI app structure</div>
+<h1>App, scenes &amp; volumes</h1>
+<p class="lede">
+    34 lines of <code>Teraslice3DApp.swift</code> decide what kind of thing this app <em>is</em> on
+    visionOS — a flat panel, a box of space on your desk, or a room. Plus the Xcode build settings
+    that quietly matter as much as the Swift does.
+</p>
+
+<div class="chips">
+    <span class="chip hl">SwiftUI · App</span>
+    <span class="chip hl">Scene</span>
+    <span class="chip hl">WindowGroup</span>
+    <span class="chip hl">.volumetric</span>
+    <span class="chip">Info.plist scene roles</span>
+    <span class="chip">xros SDK</span>
+</div>
+
+<h2 id="entry">The entry point</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/App/Teraslice3DApp.swift<span class="lines">lines 1–31</span></div>
+<pre><code class="swift">import SwiftUI
+
+@main
+struct Teraslice3DApp: App {
+    @State private var appState = AppState()
+
+    var body: some Scene {
+        #if os(visionOS)
+        // 1. Primary Application Window
+        WindowGroup {
+            PipelineVolumeView()
+                .environment(appState)
+        }
+        .defaultSize(width: 800, height: 600)
+
+        // 2. 3D Volumetric Window
+        WindowGroup(id: "volumetric-main") {
+            PipelineVolumeView()
+                .environment(appState)
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 1.0, height: 1.0, depth: 1.0, in: .meters)
+        #else
+        WindowGroup {
+            PipelineVolumeView()
+                .environment(appState)
+        }
+        .defaultSize(width: 800, height: 600)
+        #endif
+    }
+}</code></pre>
+</div>
+
+<p>There is no <code>main.swift</code>, no <code>UIApplicationMain</code>, no app delegate. The pieces:</p>
+
+<ul>
+    <li>
+        <strong><code>@main</code> + <a href="https://developer.apple.com/documentation/swiftui/app"><code>App</code></a></strong> —
+        the protocol supplies a default <code>main()</code>, so this struct <em>is</em> the executable's
+        entry point. Exactly one type per target may be <code>@main</code>.
+    </li>
+    <li>
+        <strong><code>var body: some Scene</code></strong> — an app's body is made of
+        <a href="https://developer.apple.com/documentation/swiftui/scene"><code>Scene</code></a>s, not
+        views. A scene is a unit the <em>system</em> manages: it can be opened, closed, moved, and on
+        visionOS placed anywhere in your room. Views live inside scenes.
+    </li>
+    <li>
+        <strong>Two scenes, listed like views.</strong> The scene builder collects both
+        <code>WindowGroup</code>s; declaring them does not open them. visionOS opens the app's default
+        scene at launch, and the app can open others later by id.
+    </li>
+    <li>
+        <strong><code>@State private var appState = AppState()</code></strong> — created once for the
+        life of the app and passed down with <code>.environment(appState)</code>. Chapter 03.
+    </li>
+</ul>
+
+<h2 id="scene-types">The three presentation styles on visionOS</h2>
+<p>
+    This is the platform's central design idea, and it maps directly onto SwiftUI scene types. Apple's
+    HIG treats them as a progression from "shares space politely" to "takes over the room".
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Style</th><th>Declared as</th><th>Shape</th><th>In this app</th></tr></thead>
+<tbody>
+<tr>
+    <td><strong>Window</strong></td>
+    <td><a href="https://developer.apple.com/documentation/swiftui/windowgroup"><code>WindowGroup</code></a> (default style)</td>
+    <td>Flat glass panel, sized in points, with a system chrome bar and resize handles</td>
+    <td>Scene 1 — the fallback / control panel</td>
+</tr>
+<tr>
+    <td><strong>Volume</strong></td>
+    <td><code>WindowGroup</code> + <a href="https://developer.apple.com/documentation/swiftui/volumetricwindowstyle"><code>.windowStyle(.volumetric)</code></a></td>
+    <td>Bounded box measured in <em>metres</em>; content can extend in all three axes and be viewed from any side</td>
+    <td>Scene 2 — where the graph lives</td>
+</tr>
+<tr>
+    <td><strong>Immersive space</strong></td>
+    <td><a href="https://developer.apple.com/documentation/swiftui/immersivespace"><code>ImmersiveSpace</code></a></td>
+    <td>Unbounded; content anywhere in the room, passthrough dimmed or replaced</td>
+    <td>Not implemented — see <a href="10-gaps-roadmap.html">chapter 10</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout note">
+    <div class="ico">📐</div>
+    <div>
+        <span class="label">Points vs metres</span>
+        <p>
+            <code>.defaultSize(width: 800, height: 600)</code> is in points; the volumetric variant
+            uses <a href="https://developer.apple.com/documentation/swiftui/scene/defaultsize(width:height:depth:in:)"><code>.defaultSize(width:height:depth:in: .meters)</code></a>.
+            The unit argument comes from the <a href="https://developer.apple.com/documentation/spatial">Spatial</a>
+            framework's <code>UnitLength</code>. A 1 m³ volume is roughly a big cardboard box on your
+            desk — and the graph inside it is deliberately scaled to 0.40 m so it never touches the
+            walls (<a href="06-layout-simd.html">chapter 06</a>).
+        </p>
+    </div>
+</div>
+
+<h3>What a volume gives you, and what it doesn't</h3>
+<ul>
+    <li><strong>Does:</strong> real stereo depth, motion parallax as you lean, the ability to walk around the box and see the graph from behind. A baseplate and drag bar are drawn by the system.</li>
+    <li><strong>Doesn't:</strong> give you a camera. There is no view matrix to animate — <em>you</em> are the camera. Zooming means scaling your content or resizing the volume, and "orbiting" means rotating the content or walking around it. This is why the web frontend's orbit controls have no direct equivalent here.</li>
+    <li><strong>Doesn't:</strong> let content spill outside the declared box. Geometry beyond the bounds is clipped, which is the whole reason <code>VolumetricProjection</code> exists.</li>
+</ul>
+
+<div class="refs">
+    <span class="label">References · scenes and volumes</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/scene">SwiftUI <code>Scene</code></a> · <a href="https://developer.apple.com/documentation/swiftui/windowgroup"><code>WindowGroup</code></a> · <a href="https://developer.apple.com/documentation/swiftui/volumetricwindowstyle"><code>VolumetricWindowStyle</code></a> · <a href="https://developer.apple.com/documentation/swiftui/immersivespace"><code>ImmersiveSpace</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/visionos/positioning-and-sizing-windows">Positioning and sizing windows</a> — default size, placement, resizability on visionOS.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10153/">WWDC24: Dive deep into volumes and immersive spaces</a> — the current reference for volume behaviour, including what visionOS 2 added.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10111/">WWDC23: Go beyond the window with SwiftUI</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10109/">Meet SwiftUI for spatial computing</a></li>
+        <li><span class="kind">hig</span><a href="https://developer.apple.com/design/human-interface-guidelines/spatial-layout">HIG: Spatial layout</a> · <a href="https://developer.apple.com/design/human-interface-guidelines/immersive-experiences">Immersive experiences</a></li>
+    </ul>
+</div>
+
+<h2 id="which-scene">Which scene actually opens?</h2>
+<p>
+    Reading the Swift alone, you'd expect the plain <code>WindowGroup</code> to open first — it's
+    listed first. But the screenshot in the <a href="../index.html">spatial UI guide</a> clearly shows
+    a volume. The missing half of the answer is in the Xcode project:
+</p>
+
+<div class="codeblock">
+<div class="filename">Teraslice3D.xcodeproj/project.pbxproj<span class="lines">build settings, both configurations</span></div>
+<pre><code class="swift">SDKROOT = xros;
+SUPPORTED_PLATFORMS = "xros xrsimulator";
+XROS_DEPLOYMENT_TARGET = 2.0;
+TARGETED_DEVICE_FAMILY = 7;
+SWIFT_VERSION = 6.0;
+PRODUCT_BUNDLE_IDENTIFIER = com.teraslice.Teraslice3D;
+
+GENERATE_INFOPLIST_FILE = YES;
+GENERATE_INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+GENERATE_INFOPLIST_KEY_UIApplicationPreferredDefaultSceneSessionRole = UISceneSessionRoleVolumetricApplication;
+GENERATE_INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;</code></pre>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Setting</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>SDKROOT = xros</code></td><td>Build against the visionOS SDK. <code>xrsimulator</code> is the simulator slice; <code>xros</code> is device.</td></tr>
+<tr><td><code>XROS_DEPLOYMENT_TARGET = 2.0</code></td><td>Minimum visionOS. Anything introduced in visionOS 2 is available unconditionally; visionOS 1 devices can't install it.</td></tr>
+<tr><td><code>TARGETED_DEVICE_FAMILY = 7</code></td><td>Device family 7 = Apple Vision. (1 = iPhone, 2 = iPad, 6 = Mac.)</td></tr>
+<tr><td><code>SWIFT_VERSION = 6.0</code></td><td>Swift 6 language mode → strict concurrency checking. This is why <code>Sendable</code> shows up everywhere. <a href="03-state-concurrency.html">ch. 03</a></td></tr>
+<tr><td><code>…PreferredDefaultSceneSessionRole = UISceneSessionRoleVolumetricApplication</code></td><td>Tells the system the app's <em>preferred</em> launch scene role is volumetric, so launching lands you in a volume rather than a flat window.</td></tr>
+<tr><td><code>…NSAllowsArbitraryLoads = YES</code></td><td>Disables App Transport Security so plain <code>http://127.0.0.1:8000</code> works. <a href="05-networking.html">ch. 05</a></td></tr>
+<tr><td><code>GENERATE_INFOPLIST_FILE = YES</code></td><td>There is no checked-in <code>Info.plist</code>; Xcode synthesises one from these <code>GENERATE_INFOPLIST_KEY_*</code> settings at build time.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · the second scene is unreachable from the UI</span>
+        <p>
+            <code>WindowGroup(id: "volumetric-main")</code> can only be opened programmatically, via
+            <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openwindow"><code>openWindow(id:)</code></a>.
+            <code>ControlOrnamentView</code> declares
+            <code>@Environment(\.openWindow) private var openWindow</code> — and never calls it. So the
+            explicit volume is dead code today; the volume you see at launch comes from the scene-role
+            plist key applied to the app's default scene. If you want the two-scene design from
+            <code>AVP-SPEC.md</code> (flat control panel <em>plus</em> a separate volume), wiring that
+            button is the smallest possible next step.
+        </p>
+    </div>
+</div>
+
+<div class="callout note">
+    <div class="ico">🧩</div>
+    <div>
+        <span class="label">Both scenes show the same view</span>
+        <p>
+            Scene 1 and scene 2 both host <code>PipelineVolumeView()</code>. Inside that view, the
+            <code>#if os(visionOS)</code> branch always renders a <code>RealityView</code> — it does
+            not know or care which scene it's in. A more finished app would host distinct views per
+            scene (2D dashboard vs. 3D graph), and can detect its context with the
+            <code>\.supportsMultipleWindows</code> / scene-specific environment values, or simply by
+            being given different root views at declaration time.
+        </p>
+    </div>
+</div>
+
+<h2 id="platforms">Two build systems, one source tree</h2>
+<p>
+    The directory contains <em>both</em> an Xcode project and a Swift package manifest, describing the
+    same <code>Sources/</code> folder:
+</p>
+
+<div class="codeblock">
+<div class="filename">Package.swift<span class="lines">lines 1–30</span></div>
+<pre><code class="swift">// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "Teraslice3D",
+    platforms: [
+        .visionOS(.v2),
+        .macOS(.v15)
+    ],
+    products: [
+        .executable(name: "Teraslice3D", targets: ["Teraslice3D"]),
+    ],
+    targets: [
+        .executableTarget(name: "Teraslice3D", dependencies: [], path: "Sources"),
+        .testTarget(name: "Teraslice3DTests", dependencies: ["Teraslice3D"], path: "Tests")
+    ]
+)</code></pre>
+</div>
+
+<p>
+    The package exists so <code>swift build</code> and <code>swift test</code> work from the command
+    line on a Mac — which is why the <code>#else</code> branch of <code>PipelineVolumeView</code>
+    exists at all, and why <code>NodeEntity</code> aliases <code>NSColor</code>. The visionOS app
+    itself is built from <code>Teraslice3D.xcodeproj</code>. Zero external dependencies:
+    <code>dependencies: []</code>. Chapter 09 covers the practical commands and the sharp edges of
+    keeping two manifests in sync.
+</p>
+
+<div class="refs">
+    <span class="label">References · project configuration</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/bundleresources/information_property_list/uiapplicationscenemanifest"><code>UIApplicationSceneManifest</code></a> — the scene-role keys Xcode generates for you.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity"><code>NSAppTransportSecurity</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/xcode/build-settings-reference">Xcode Build Settings Reference</a> — look up any <code>ALL_CAPS</code> setting.</li>
+        <li><span class="kind">docs</span><a href="https://www.swift.org/documentation/package-manager/">Swift Package Manager</a> · <a href="https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html"><code>PackageDescription</code> API</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10110/">WWDC23: Elevate your windowed app for spatial computing</a> — if you ever need to share this code with an iPad target.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="01-swift-tour.html"><span class="dir">← Previous</span><span class="ttl">01 · Swift tour, by example</span></a>
+    <a class="next" href="03-state-concurrency.html"><span class="dir">Next →</span><span class="ttl">03 · State &amp; concurrency</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>
