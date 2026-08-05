@@ -2,17 +2,29 @@ import ForceGraph3D from '3d-force-graph';
 import { getNodeColor, getLinkColor, colors } from './GraphColors.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
-import { GraphData, OutlineSettings } from '../types/graph.js';
+import { GraphData, GraphNode, GraphLink, OutlineSettings } from '../types/graph.js';
+import type { GraphView } from './GraphView.js';
+import { endpointId } from './graphUtils.js';
 import { EdgePopover } from '../controls/EdgePopover.js';
 import { NodePopover } from '../controls/NodePopover.js';
 
-export class GraphRenderer {
+/** Identity of a link across refreshes, used to match old data against new. */
+function linkKey(link: GraphLink): string {
+  return `${endpointId(link.source)}_${endpointId(link.target)}_${link.job_id || ''}`;
+}
+
+export class GraphRenderer implements GraphView {
   private element: HTMLElement;
   private graph: any; // ForceGraph3D instance
   private outlinePass: OutlinePass | null;
   private edgePopover: EdgePopover;
   private nodePopover: NodePopover;
   private showParticles: boolean = false;
+  // The nodes/links arrays currently handed to graphData(), tracked by
+  // reference so setVisibleData() can skip a redundant graphData() call --
+  // which would restart the force simulation and visibly jolt the layout.
+  private visibleNodes: GraphNode[] | null = null;
+  private visibleLinks: GraphLink[] | null = null;
 
   constructor(element: HTMLElement) {
     this.element = element;
@@ -25,11 +37,16 @@ export class GraphRenderer {
   }
 
   private init(): void {
-    this.graph = new ForceGraph3D(this.element)
+    // 3d-force-graph's ForceGraph3DInstance is a circular type alias, so the
+    // fluent chain below loses its type after the first accessor call. Treat
+    // the instance as untyped, matching the `graph: any` field above.
+    const graph: any = new ForceGraph3D(this.element);
+
+    this.graph = graph
       .nodeColor(getNodeColor)
       .nodeRelSize(6)
       .nodeOpacity(0.95)
-      .linkWidth(link => {
+      .linkWidth((link: GraphLink) => {
         // scaled = ((original - min) / (max - min)) * (newMax - newMin) + newMin
         const newSize = ((link.workers - 1) / (200 - 1)) * (20 - 1) + 1;
         return newSize;
@@ -38,20 +55,20 @@ export class GraphRenderer {
       .linkOpacity(0.75)
       .linkDirectionalParticles(0)
       .linkDirectionalParticleWidth(2.5)
-      .linkDirectionalParticleSpeed(link => link.status === 'running' ? 0.005 : 0.002)
-      .onLinkHover(link => {
+      .linkDirectionalParticleSpeed((link: GraphLink) => link.status === 'running' ? 0.005 : 0.002)
+      .onLinkHover((link: GraphLink | null) => {
         if (link) {
           this.edgePopover.show(link);
         } else {
           this.edgePopover.hide(250);
         }
       })
-      .onLinkClick(link => {
+      .onLinkClick((link: GraphLink | null) => {
         if (link) {
           this.edgePopover.show(link);
         }
       })
-      .onNodeHover(node => {
+      .onNodeHover((node: GraphNode | null) => {
         if (node) {
           const links = this.graph.graphData()?.links || [];
           this.nodePopover.show(node, links);
@@ -59,7 +76,7 @@ export class GraphRenderer {
           this.nodePopover.hide(250);
         }
       })
-      .onNodeClick(node => {
+      .onNodeClick((node: GraphNode | null) => {
         if (node) {
           const links = this.graph.graphData()?.links || [];
           this.nodePopover.show(node, links);
@@ -125,6 +142,29 @@ export class GraphRenderer {
 
   public loadData(data: GraphData): void {
     this.graph.graphData(data);
+    this.trackVisible(data);
+  }
+
+  /**
+   * Render the given subset of the data. Skipped entirely when the view is
+   * already showing these exact arrays, because calling graphData() restarts
+   * the force simulation and visibly jolts the layout.
+   *
+   * The check is reference identity rather than a count comparison:
+   * GraphFilters.computeFilter() returns the original arrays by reference for
+   * an empty search term and freshly built arrays otherwise, so identity
+   * distinguishes "nothing changed" from "different subset, same size".
+   */
+  public setVisibleData(data: GraphData): void {
+    if (data.nodes === this.visibleNodes && data.links === this.visibleLinks) return;
+
+    this.graph.graphData(data);
+    this.trackVisible(data);
+  }
+
+  private trackVisible(data: GraphData): void {
+    this.visibleNodes = data.nodes;
+    this.visibleLinks = data.links;
   }
 
   private copyLinkProperties(existingLink: any, newLink: any): void {
@@ -164,17 +204,11 @@ export class GraphRenderer {
 
     const existingLinkMap = new Map<string, any>();
     currentData.links.forEach((link: any) => {
-      const srcId = typeof link.source === 'object' ? link.source.id : link.source;
-      const tgtId = typeof link.target === 'object' ? link.target.id : link.target;
-      const key = `${srcId}_${tgtId}_${link.job_id || ''}`;
-      existingLinkMap.set(key, link);
+      existingLinkMap.set(linkKey(link), link);
     });
 
     const reconciledLinks = newData.links.map((newLink: any) => {
-      const srcId = typeof newLink.source === 'object' ? newLink.source.id : newLink.source;
-      const tgtId = typeof newLink.target === 'object' ? newLink.target.id : newLink.target;
-      const key = `${srcId}_${tgtId}_${newLink.job_id || ''}`;
-      const existingLink = existingLinkMap.get(key);
+      const existingLink = existingLinkMap.get(linkKey(newLink));
 
       if (existingLink) {
         this.copyLinkProperties(existingLink, newLink);
@@ -201,15 +235,9 @@ export class GraphRenderer {
       if (!currentNodeIds.has(n.id)) return true;
     }
 
-    const getLinkKey = (l: any) => {
-      const src = typeof l.source === 'object' ? l.source.id : l.source;
-      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
-      return `${src}_${tgt}_${l.job_id || ''}`;
-    };
-
-    const currentLinkKeys = new Set(currentData.links.map(getLinkKey));
+    const currentLinkKeys = new Set(currentData.links.map(linkKey));
     for (const l of newData.links) {
-      if (!currentLinkKeys.has(getLinkKey(l))) return true;
+      if (!currentLinkKeys.has(linkKey(l))) return true;
     }
 
     return false;
@@ -225,16 +253,10 @@ export class GraphRenderer {
       }
     });
 
-    const getLinkKey = (l: any) => {
-      const src = typeof l.source === 'object' ? l.source.id : l.source;
-      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
-      return `${src}_${tgt}_${l.job_id || ''}`;
-    };
-
     const linkMap = new Map<string, any>();
-    currentData.links.forEach((l: any) => linkMap.set(getLinkKey(l), l));
+    currentData.links.forEach((l: any) => linkMap.set(linkKey(l), l));
     newData.links.forEach((newLink: any) => {
-      const existing = linkMap.get(getLinkKey(newLink));
+      const existing = linkMap.get(linkKey(newLink));
       if (existing) {
         this.copyLinkProperties(existing, newLink);
       }
@@ -251,10 +273,12 @@ export class GraphRenderer {
     const currentData = this.graph.graphData();
     if (!currentData || !currentData.nodes || currentData.nodes.length === 0) {
       this.graph.graphData(newData);
+      this.trackVisible(newData);
       return newData;
     }
 
     if (!this.hasDataChanged(currentData, newData)) {
+      this.trackVisible(currentData);
       return currentData;
     }
 
@@ -263,6 +287,7 @@ export class GraphRenderer {
       // Update properties in-place without calling graphData() to prevent force expansion creep.
       this.updatePropertiesInPlace(currentData, newData);
       this.graph.refresh();
+      this.trackVisible(currentData);
       console.log('Graph data properties updated in-place (no layout shift)');
       return currentData;
     } else {
@@ -275,6 +300,7 @@ export class GraphRenderer {
         n.vz = 0;
       });
       this.graph.graphData(reconciled);
+      this.trackVisible(reconciled);
       console.log('Graph topology updated with position reconciliation');
       return reconciled;
     }
@@ -379,7 +405,35 @@ export class GraphRenderer {
     }
   }
 
-  public highlightObjects(objects: THREE.Object3D[]): void {
+  /**
+   * Outline every node in `nodeIds`, plus every link whose source *and*
+   * target are both in the set -- mirroring computeFilter()'s link rule, but
+   * derived here from the node-id set so the rule lives in only one place.
+   */
+  public highlight(nodeIds: ReadonlySet<string>): void {
+    const objectsToHighlight: THREE.Object3D[] = [];
+    const scene = this.graph.scene();
+
+    scene.traverse((child: any) => {
+      if (child.isMesh) {
+        if (child.__graphObjType === 'node' && child.__data && nodeIds.has(child.__data.id)) {
+          objectsToHighlight.push(child);
+        } else if (child.__graphObjType === 'link' && child.__data) {
+          const linkData = child.__data;
+          if (linkData.source && linkData.target &&
+              nodeIds.has(endpointId(linkData.source)) &&
+              nodeIds.has(endpointId(linkData.target))) {
+            objectsToHighlight.push(child);
+          }
+        }
+      }
+    });
+
+    console.log(`Highlighting ${objectsToHighlight.length} objects (nodes and links)`);
+    this.highlightObjects(objectsToHighlight);
+  }
+
+  private highlightObjects(objects: THREE.Object3D[]): void {
     if (!this.outlinePass) {
       console.warn('OutlinePass not initialized');
       return;

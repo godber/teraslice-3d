@@ -13,7 +13,8 @@
       "Bash(gh issue list *)",
       "Bash(gh issue view *)",
       "Bash(swift --version)",
-      "Bash(xcodebuild -version)"
+      "Bash(xcodebuild -version)",
+      "Bash(npx vitest *)"
     ],
     "deny": []
   }
