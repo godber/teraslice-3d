@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 · Models &amp; Codable — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">04 · Models &amp; Codable</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a class="current" href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 04 · Foundation / Codable</div>
+<h1>Models &amp; Codable</h1>
+<p class="lede">
+    Four files, 387 lines, zero dependencies: how the backend's JSON becomes Swift values. This is
+    also the best place in the codebase to learn <code>Codable</code>, because it contains one
+    fully-synthesised model, one with a custom decoder, and one that decodes a nested payload.
+</p>
+
+<div class="chips">
+    <span class="chip hl">Codable</span>
+    <span class="chip hl">CodingKeys</span>
+    <span class="chip hl">JSONDecoder</span>
+    <span class="chip">nestedContainer</span>
+    <span class="chip">Identifiable</span>
+    <span class="chip">Sendable</span>
+</div>
+
+<h2 id="shape">The payload being modelled</h2>
+<p>
+    The backend's <code>/api/pipeline_graph</code> returns the standard nodes-and-links shape that
+    <a href="https://github.com/vasturiano/3d-force-graph">3d-force-graph</a> consumes on the web
+    side, so the Swift models mirror the same JSON the browser gets:
+</p>
+
+<div class="codeblock">
+<div class="filename">GET /api/pipeline_graph (abridged)<span class="lines">—</span></div>
+<pre>{
+  "nodes": [
+    { "id": "kafka_data3:incoming-noaa-isd-csv-v1", "connector_type": "KAFKA" },
+    { "id": "es_data3:noaa-isd-v5-**",              "connector_type": "ES" }
+  ],
+  "links": [
+    { "source": "kafka_data3:incoming-noaa-isd-csv-v1",
+      "target": "es_data3:noaa-isd-v5-**",
+      "job_id": "71e871d4-…", "name": "noaa-isd-store-es",
+      "workers": 12, "status": "running",
+      "url": "…", "grafana_url": null }
+  ]
+}</pre>
+</div>
+
+<h2 id="synthesised">Level 1 — synthesised conformance</h2>
+<p>
+    <code>PipelineGraph</code> is the easy case. Both properties are <code>Codable</code>, so the
+    compiler writes the whole implementation:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/GraphData.swift<span class="lines">lines 101–108</span></div>
+<pre><code class="swift">public struct PipelineGraph: Codable, Equatable, Hashable, Sendable {
+    public let nodes: [GraphNode]
+    public let links: [GraphLink]
+
+    public init(nodes: [GraphNode] = [], links: [GraphLink] = []) {
+        self.nodes = nodes
+        self.links = links
+    }
+}</code></pre>
+</div>
+
+<p>Two details that are easy to miss:</p>
+<ul>
+    <li>
+        <strong>Default parameter values</strong> (<code>= []</code>) mean
+        <code>PipelineGraph()</code>, <code>PipelineGraph(nodes: x)</code> and the two-argument form
+        all work from one initialiser. Swift has no overload explosion problem here.
+    </li>
+    <li>
+        <strong><code>Equatable</code> is load-bearing.</strong>
+        <code>.onChange(of: appState.graphData)</code> in <code>PipelineVolumeView</code> only fires
+        when the value actually differs, and that comparison walks every node and link. Cheap for
+        dozens of nodes; something to watch if a cluster ever returns thousands.
+    </li>
+</ul>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · writing your own <code>init</code> keeps the memberwise one</span>
+        <p>
+            A <code>struct</code> gets a memberwise initialiser for free, but declaring
+            <code>init</code> inside the type replaces it. The explicit <code>public init</code> here
+            exists partly because the free one is <code>internal</code> — a <code>public</code> struct
+            does not get a <code>public</code> memberwise init. (Declaring your own init in an
+            <code>extension</code> instead would preserve the synthesised one.)
+        </p>
+    </div>
+</div>
+
+<h2 id="codingkeys">Level 2 — <code>CodingKeys</code> and a custom decoder</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/GraphData.swift<span class="lines">lines 25–53</span></div>
+<pre><code class="swift">public struct GraphNode: Identifiable, Codable, Hashable, Sendable {
+    public let id: String
+    public let connectorType: ConnectorType
+
+    public var isIncoming: Bool {
+        id.lowercased().contains("incoming") || connectorType == .kafkaIncoming
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case connectorType = "connector_type"      // Swift name ⇄ JSON name
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        let rawType = try container.decodeIfPresent(String.self, forKey: .connectorType) ?? ""
+
+        if id.lowercased().contains("incoming") &amp;&amp; (rawType == "KAFKA" || rawType.isEmpty) {
+            self.connectorType = .kafkaIncoming            // ← derived, not received
+        } else {
+            self.connectorType = ConnectorType(rawValue: rawType) ?? .unknown
+        }
+    }
+}</code></pre>
+</div>
+
+<p>The mechanics, in order:</p>
+<ol>
+    <li>
+        <strong><code>CodingKeys</code></strong> is a nested enum conforming to
+        <a href="https://developer.apple.com/documentation/swift/codingkey"><code>CodingKey</code></a>.
+        Its raw values are the JSON key names. Its <em>cases</em> must cover every property you want
+        coded — omit a property's case and the synthesised code ignores that property entirely.
+        (Note <code>isIncoming</code> is computed, so it's never coded regardless.)
+    </li>
+    <li>
+        <strong><code>decoder.container(keyedBy:)</code></strong> gets a typed view of the JSON object.
+        <code>decode(_:forKey:)</code> throws if the key is missing or the type is wrong;
+        <code>decodeIfPresent</code> returns an optional instead.
+    </li>
+    <li>
+        <strong>Business logic in the decoder.</strong> The backend sends
+        <code>"KAFKA"</code> for both incoming and internal topics; the distinction — which drives the
+        yellow-vs-blue colouring — is inferred from the substring <code>"incoming"</code> in the node
+        id. This mirrors the documented quirk in the project's <code>CLAUDE.md</code> ("Special
+        handling for connectors/topics containing 'incoming'").
+    </li>
+    <li>
+        <strong><code>ConnectorType(rawValue:) ?? .unknown</code></strong> — an unrecognised connector
+        type degrades to a grey sphere instead of throwing. Good instinct for a client that must
+        tolerate a newer backend.
+    </li>
+</ol>
+
+<div class="callout note">
+    <div class="ico">💡</div>
+    <div>
+        <span class="label">The shortcut this code chose not to take</span>
+        <p>
+            For pure snake_case-to-camelCase mapping you can skip <code>CodingKeys</code> altogether:
+            <code>decoder.keyDecodingStrategy = .convertFromSnakeCase</code>. <code>GraphLink</code>
+            takes a third route — its properties are <em>named</em> <code>job_id</code> and
+            <code>grafana_url</code> so no mapping is needed at all. Three strategies in one folder;
+            for consistency, most codebases pick the decoder strategy plus camelCase properties and
+            never write <code>CodingKeys</code> unless the shape genuinely differs.
+        </p>
+    </div>
+</div>
+
+<h3><code>GraphLink</code>: a computed id, and asymmetric coding</h3>
+<div class="codeblock">
+<div class="filename">Sources/Models/GraphData.swift<span class="lines">lines 57–77</span></div>
+<pre><code class="swift">public struct GraphLink: Identifiable, Codable, Hashable, Sendable {
+    public var id: String { job_id + "_" + source + "_" + target }
+    public let source: String
+    public let target: String
+    public let job_id: String
+    public let name: String
+    public let url: String?
+    public let workers: Int
+    public let status: String
+    public let grafana_url: String?
+
+    enum CodingKeys: String, CodingKey {
+        case source, target, job_id, name, url, workers, status, grafana_url
+    }
+}</code></pre>
+</div>
+<ul>
+    <li><strong>No <code>id</code> case</strong> in <code>CodingKeys</code> — correct, since <code>id</code> is computed. The composite id matters because Teraslice's <code>routed_sender</code> lets one job fan out to several destinations, so <code>job_id</code> alone isn't unique among links.</li>
+    <li><strong><code>String?</code> for <code>url</code> and <code>grafana_url</code></strong> — optional properties decode a missing key or explicit <code>null</code> as <code>nil</code> without any extra code.</li>
+    <li><strong><code>status: String</code>, not <code>JobStatus</code></strong> — the link keeps the raw string and converts at render time (<code>LinkEntity.material(for:)</code> does <code>JobStatus(rawValue: status.lowercased()) ?? .unknown</code>). Decoding straight into the enum would be stricter and would centralise the fallback; it would also make an unexpected status a decode failure unless you wrote a custom initialiser. Deliberate looseness at a network boundary.</li>
+</ul>
+
+<h2 id="nested">Level 3 — reaching into nested JSON</h2>
+<p>
+    Teraslice's <code>/api/jobs</code> response nests the execution status one level down, under
+    <code>ex._status</code>. Swift's answer is a second <code>CodingKey</code> enum and a nested
+    container:
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/JobDetails.swift<span class="lines">lines 42–93 (condensed)</span></div>
+<pre><code class="swift">enum CodingKeys: String, CodingKey {
+    case job_id, name, lifecycle, workers, assets
+    case created = "_created"
+    case updated = "_updated"
+    case ex                              // the nested object
+}
+
+enum ExKeys: String, CodingKey {
+    case status = "_status"
+}
+
+public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.job_id  = try container.decode(String.self, forKey: .job_id)
+    self.name    = try container.decodeIfPresent(String.self, forKey: .name) ?? "Unnamed Job"
+    self.workers = try container.decodeIfPresent(Int.self, forKey: .workers) ?? 1
+    // …
+
+    if let exContainer = try? container.nestedContainer(keyedBy: ExKeys.self, forKey: .ex),
+       let rawStatus = try? exContainer.decodeIfPresent(String.self, forKey: .status) {
+        self.status = JobStatus(rawValue: rawStatus.lowercased()) ?? .unknown
+    } else {
+        self.status = .unknown
+    }
+}</code></pre>
+</div>
+
+<p>
+    <code>nestedContainer(keyedBy:forKey:)</code> descends into <code>ex</code> and gives you a
+    container keyed by a <em>different</em> enum. Note the defensive layering: <code>try?</code> on the
+    container, <code>try?</code> on the value, <code>?? .unknown</code> on the enum conversion, and a
+    fallback <code>else</code>. A job with no execution record decodes fine as
+    <code>.unknown</code> rather than failing the entire array.
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · one bad element fails the whole array</span>
+        <p>
+            <code>JSONDecoder().decode([JobDetails].self, from: data)</code> is all-or-nothing: a
+            single malformed element throws and you lose every job. If that matters, the usual fix is a
+            wrapper type that decodes each element with <code>try?</code> into
+            <code>[JobDetails?]</code> and compacts the nils — worth knowing before a production
+            cluster surprises you.
+        </p>
+    </div>
+</div>
+
+<h3>The hand-written encoder</h3>
+<p>
+    <code>JobDetails</code> also implements <code>encode(to:)</code>, rebuilding the nested
+    <code>ex</code> object on the way out:
+</p>
+<div class="codeblock">
+<div class="filename">Sources/Models/JobDetails.swift<span class="lines">lines 95–107</span></div>
+<pre><code class="swift">public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(job_id, forKey: .job_id)
+    // …
+    var exContainer = container.nestedContainer(keyedBy: ExKeys.self, forKey: .ex)
+    try exContainer.encode(status.rawValue, forKey: .status)
+}</code></pre>
+</div>
+<p>
+    Nothing in the app encodes a <code>JobDetails</code> — the client only reads. It's there so the
+    type round-trips, which is handy for snapshot fixtures and tests. Note <code>var container</code>:
+    encoding containers are mutable structs.
+</p>
+
+<h2 id="serverconfig">ServerConfig: a value type with presets</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Models/ServerConfig.swift<span class="lines">lines 4–31 (condensed)</span></div>
+<pre><code class="swift">public struct ServerConfig: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var name: String
+    public var baseURLString: String
+    public var isMock: Bool
+
+    public var baseURL: URL? {
+        URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    public init(id: UUID = UUID(), name: String, baseURLString: String, isMock: Bool = false) { … }
+
+    public static let defaultLocal = ServerConfig(
+        name: "Local FastAPI Backend",
+        baseURLString: "http://127.0.0.1:8000",
+        isMock: false)
+
+    public static let mockDataServer = ServerConfig(
+        name: "Offline Mock Data",
+        baseURLString: "http://mock.internal",
+        isMock: true)
+}</code></pre>
+</div>
+
+<ul>
+    <li><strong><code>id: UUID = UUID()</code></strong> — a fresh identity per instance by default, so <code>ForEach</code> and <code>Picker</code> can tell two configs apart even with identical names.</li>
+    <li><strong><code>static let</code> presets</strong> are the Swift idiom for named constants of a type. They're what makes <code>.defaultLocal</code> and <code>.mockDataServer</code> work with no type prefix at the use site.</li>
+    <li><strong><code>baseURL: URL?</code> is computed</strong>, so an invalid string simply yields <code>nil</code> and every caller must <code>guard</code> — see chapter 05.</li>
+    <li><strong>Nothing persists these.</strong> Servers added in <code>SettingsView</code> live in memory only; relaunching restores the two presets. <code>Codable</code> conformance means adding persistence is a few lines with <code>@AppStorage</code>/<code>UserDefaults</code> + <code>JSONEncoder</code>, or <a href="https://developer.apple.com/documentation/swiftdata">SwiftData</a> if you want more.</li>
+</ul>
+
+<h2 id="mock">MockGraphProvider: fixtures as a first-class feature</h2>
+<p>
+    <code>MockGraphProvider</code> is a namespace of two static functions returning a hand-built
+    9-node / 6-link graph and 6 matching job records, scrubbed from a real cluster (NOAA ISD weather
+    data pipelines). It serves three distinct purposes:
+</p>
+<ol>
+    <li><strong>Initial state</strong> — <code>AppState.graphData</code> is initialised to it, so the very first frame draws a real graph instead of an empty volume.</li>
+    <li><strong>Offline mode</strong> — <code>ServerConfig.mockDataServer</code> has <code>isMock = true</code> and the API client short-circuits to it, which means you can develop the whole 3D layer in the simulator with no backend running.</li>
+    <li><strong>Test input</strong> — all nine XCTest cases feed on it (<a href="09-build-test.html">chapter 09</a>).</li>
+</ol>
+<p>
+    The fixture is chosen with some care: it includes one <code>stopped</code> job, one
+    <code>failing</code> job, a fan-out from a single Kafka topic to three Elasticsearch indices, and
+    worker counts from 2 to 16 — enough to exercise every colour branch and the link-thickness scaling.
+</p>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>struct</code> as a namespace</span>
+        <p>
+            <code>public struct MockGraphProvider { public static func … }</code> is never
+            instantiated; it's a bag of static functions, the Swift equivalent of a module-level
+            function group. Using a <code>struct</code> rather than a <code>class</code> means nobody
+            can subclass it, and an <code>enum</code> with no cases (a "caseless enum") is the stricter
+            version — it can't even be constructed by accident.
+        </p>
+    </div>
+</div>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/foundation/archives-and-serialization">Archives and Serialization</a> — the umbrella for <code>Codable</code>.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/codable"><code>Codable</code></a> · <a href="https://developer.apple.com/documentation/swift/codingkey"><code>CodingKey</code></a> · <a href="https://developer.apple.com/documentation/swift/keyeddecodingcontainer"><code>KeyedDecodingContainer</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/foundation/jsondecoder"><code>JSONDecoder</code></a> — see <code>keyDecodingStrategy</code>, <code>dateDecodingStrategy</code>.</li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/foundation/encoding-and-decoding-custom-types">Encoding and Decoding Custom Types</a> — Apple's walkthrough, including nested containers.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/identifiable"><code>Identifiable</code></a> · <a href="https://developer.apple.com/documentation/foundation/uuid"><code>UUID</code></a> · <a href="https://developer.apple.com/documentation/foundation/url"><code>URL</code></a></li>
+        <li><span class="kind">repo</span><code>backend/app/lib/ts.py</code> — the Python that produces this JSON; the <code>_api_name</code> / Teraslice v3 rules in <code>CLAUDE.md</code> explain where node ids come from.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="03-state-concurrency.html"><span class="dir">← Previous</span><span class="ttl">03 · State &amp; concurrency</span></a>
+    <a class="next" href="05-networking.html"><span class="dir">Next →</span><span class="ttl">05 · Networking</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

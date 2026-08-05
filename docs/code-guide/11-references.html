@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11 · Reference index — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">11 · Reference index</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="index.html">Guide home</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a class="current" href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 11 · Everything, in one place</div>
+<h1>Reference index</h1>
+<p class="lede">
+    Every link used in this guide, grouped for browsing rather than reading, plus a symbol table mapping
+    each Apple type in the codebase to its documentation page. All URLs were checked when this guide
+    was written.
+</p>
+
+<h2 id="learn">Learning paths</h2>
+<div class="refs">
+    <span class="label">Swift, the language</span>
+    <ul>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/">The Swift Programming Language</a> — the reference. Read <em>A Swift Tour</em>, then dip in as needed.</li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/classesandstructures">Structures and Classes</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/properties">Properties</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/enumerations">Enumerations</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/protocols">Protocols</a></li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/closures">Closures</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/optionalchaining">Optional Chaining</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/errorhandling">Error Handling</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/generics">Generics</a></li>
+        <li><span class="kind">book</span><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency">Concurrency</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/macros">Macros</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting">ARC</a> · <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/advancedoperators">Advanced Operators</a> (result builders)</li>
+        <li><span class="kind">guide</span><a href="https://www.swift.org/documentation/api-design-guidelines/">API Design Guidelines</a> — naming conventions.</li>
+        <li><span class="kind">guide</span><a href="https://www.swift.org/migration/documentation/migrationguide/">Swift 6 Migration Guide</a> · <a href="https://developer.apple.com/documentation/swift/adoptingswift6">Adopting Swift 6</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/swift-standard-library">Swift Standard Library</a></li>
+    </ul>
+</div>
+
+<div class="refs">
+    <span class="label">visionOS, start to finish</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/visionos">visionOS documentation hub</a></li>
+        <li><span class="kind">tutorial</span><a href="https://developer.apple.com/documentation/visionos/creating-your-first-visionos-app">Creating your first visionOS app</a> · <a href="https://developer.apple.com/documentation/visionos/adding-3d-content-to-your-app">Adding 3D content to your app</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/visionos/positioning-and-sizing-windows">Positioning and sizing windows</a> · <a href="https://developer.apple.com/documentation/visionos/creating-fully-immersive-experiences">Creating fully immersive experiences</a></li>
+        <li><span class="kind">article</span><a href="https://developer.apple.com/documentation/visionos/understanding-the-realitykit-modular-architecture">Understanding the RealityKit modular architecture</a></li>
+        <li><span class="kind">sample</span><a href="https://developer.apple.com/documentation/visionos/world">Hello World</a> — windows, volumes and immersive spaces in one app.</li>
+        <li><span class="kind">sample</span><a href="https://developer.apple.com/documentation/visionos/diorama">Diorama</a> — attachments, materials, Reality Composer Pro content.</li>
+        <li><span class="kind">hig</span><a href="https://developer.apple.com/design/human-interface-guidelines/designing-for-visionos">Designing for visionOS</a> · <a href="https://developer.apple.com/design/human-interface-guidelines/spatial-layout">Spatial layout</a> · <a href="https://developer.apple.com/design/human-interface-guidelines/ornaments">Ornaments</a> · <a href="https://developer.apple.com/design/human-interface-guidelines/materials">Materials</a> · <a href="https://developer.apple.com/design/human-interface-guidelines/immersive-experiences">Immersive experiences</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/arkit/arkit_in_visionos">ARKit in visionOS</a> — hand and world tracking, if you ever go past RealityKit.</li>
+    </ul>
+</div>
+
+<div class="refs">
+    <span class="label">WWDC sessions worth the hour</span>
+    <ul>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10260/">Get started with building apps for spatial computing</a> (WWDC23)</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10109/">Meet SwiftUI for spatial computing</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10111/">Go beyond the window with SwiftUI</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10113/">Take SwiftUI to the next dimension</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10080/">Build spatial experiences with RealityKit</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10081/">Enhance your spatial computing app with RealityKit</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10073/">Design for spatial input</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10203/">Develop your first immersive app</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10153/">Dive deep into volumes and immersive spaces</a> (WWDC24) · <a href="https://developer.apple.com/videos/play/wwdc2024/10152/">Create custom hover effects in visionOS</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2025/274/">Better together: SwiftUI and RealityKit</a> (WWDC25) · <a href="https://developer.apple.com/videos/play/wwdc2025/288/">Bring your SceneKit project to RealityKit</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10149/">Discover Observation in SwiftUI</a> · <a href="https://developer.apple.com/videos/play/wwdc2024/10169/">Migrate your app to Swift 6</a> · <a href="https://developer.apple.com/videos/play/wwdc2024/10179/">Meet Swift Testing</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10083/">Meet Reality Composer Pro</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10202/">Explore materials in Reality Composer Pro</a> · <a href="https://developer.apple.com/videos/play/wwdc2024/10104/">Build a spatial drawing app with RealityKit</a></li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10110/">Elevate your windowed app for spatial computing</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10082/">Meet ARKit for spatial computing</a></li>
+    </ul>
+</div>
+
+<h2 id="symbols">Symbol table — every Apple API this codebase touches</h2>
+<p>Grouped by framework, in the order you meet them.</p>
+
+<h3>SwiftUI</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Symbol</th><th>Used in</th><th>Chapter</th></tr></thead>
+<tbody>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/app"><code>App</code></a>, <a href="https://developer.apple.com/documentation/swiftui/scene"><code>Scene</code></a></td><td><code>Teraslice3DApp</code></td><td><a href="02-app-scenes.html">02</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/windowgroup"><code>WindowGroup</code></a>, <a href="https://developer.apple.com/documentation/swiftui/volumetricwindowstyle"><code>.windowStyle(.volumetric)</code></a>, <a href="https://developer.apple.com/documentation/swiftui/scene/defaultsize(width:height:depth:in:)"><code>.defaultSize(…in: .meters)</code></a></td><td><code>Teraslice3DApp</code></td><td><a href="02-app-scenes.html">02</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/immersivespace"><code>ImmersiveSpace</code></a>, <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openimmersivespace"><code>openImmersiveSpace</code></a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/state"><code>@State</code></a>, <a href="https://developer.apple.com/documentation/swiftui/environment"><code>@Environment</code></a>, <a href="https://developer.apple.com/documentation/swiftui/bindable"><code>Bindable</code></a></td><td>all views</td><td><a href="03-state-concurrency.html">03</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/environmentvalues/dismiss"><code>\.dismiss</code></a>, <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openwindow"><code>\.openWindow</code></a>, <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/openurl"><code>\.openURL</code></a></td><td><code>SettingsView</code>, <code>JobsInspectorView</code>, <code>ControlOrnamentView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/view/ornament(visibility:attachmentanchor:contentalignment:ornament:)"><code>.ornament</code></a></td><td><code>PipelineVolumeView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/view/onchange(of:initial:_:)"><code>.onChange(of:)</code></a>, <a href="https://developer.apple.com/documentation/swiftui/view-fundamentals"><code>.task</code></a></td><td><code>PipelineVolumeView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/material"><code>Material</code></a> (<code>.ultraThinMaterial</code>, <code>.regularMaterial</code>, <code>.thinMaterial</code>)</td><td>ornament, fallback view</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/navigationstack"><code>NavigationStack</code></a>, <a href="https://developer.apple.com/documentation/swiftui/list"><code>List</code></a>, <a href="https://developer.apple.com/documentation/swiftui/form"><code>Form</code></a></td><td><code>JobsInspectorView</code>, <code>SettingsView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/menu"><code>Menu</code></a>, <a href="https://developer.apple.com/documentation/swiftui/picker"><code>Picker</code></a>, <a href="https://developer.apple.com/documentation/swiftui/view/sheet(ispresented:ondismiss:content:)"><code>.sheet</code></a>, <a href="https://developer.apple.com/documentation/swiftui/view/animation(_:value:)"><code>.animation</code></a></td><td><code>ControlOrnamentView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/gestures">Gestures</a>, <a href="https://developer.apple.com/documentation/swiftui/spatialtapgesture"><code>SpatialTapGesture</code></a>, <a href="https://developer.apple.com/documentation/swiftui/rotategesture3d"><code>RotateGesture3D</code></a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)"><code>.searchable</code></a>, <a href="https://developer.apple.com/documentation/swiftui/appstorage"><code>@AppStorage</code></a>, <a href="https://developer.apple.com/documentation/swiftui/previews-in-xcode"><code>#Preview</code></a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>RealityKit</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Symbol</th><th>Used in</th><th>Chapter</th></tr></thead>
+<tbody>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/realityview"><code>RealityView</code></a>, <a href="https://developer.apple.com/documentation/realitykit/realityviewcontent"><code>RealityViewContent</code></a></td><td><code>PipelineVolumeView</code></td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/entity"><code>Entity</code></a>, <a href="https://developer.apple.com/documentation/realitykit/entity/components"><code>.components</code></a>, <a href="https://developer.apple.com/documentation/realitykit/component"><code>Component</code></a>, <a href="https://developer.apple.com/documentation/realitykit/system"><code>System</code></a></td><td>all three RealityKit files</td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/hasmodel"><code>HasModel</code></a>, <a href="https://developer.apple.com/documentation/realitykit/hascollision"><code>HasCollision</code></a></td><td><code>NodeEntity</code>, <code>LinkEntity</code></td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/modelcomponent"><code>ModelComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/meshresource"><code>MeshResource</code></a> (<a href="https://developer.apple.com/documentation/realitykit/meshresource/generatesphere(radius:)"><code>generateSphere</code></a>, <a href="https://developer.apple.com/documentation/realitykit/meshresource/generatecylinder(height:radius:)"><code>generateCylinder</code></a>)</td><td><code>NodeEntity</code>, <code>LinkEntity</code></td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/simplematerial"><code>SimpleMaterial</code></a>, <a href="https://developer.apple.com/documentation/realitykit/physicallybasedmaterial"><code>PhysicallyBasedMaterial</code></a>, <a href="https://developer.apple.com/documentation/realitykit/unlitmaterial"><code>UnlitMaterial</code></a>, <a href="https://developer.apple.com/documentation/realitykit/shadergraphmaterial"><code>ShaderGraphMaterial</code></a></td><td><code>NodeEntity</code>, <code>LinkEntity</code> (first only)</td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/shaperesource"><code>ShapeResource</code></a>, <a href="https://developer.apple.com/documentation/realitykit/collisioncomponent"><code>CollisionComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/entity/generatecollisionshapes(recursive:)"><code>generateCollisionShapes</code></a></td><td><code>NodeEntity</code>, <code>LinkEntity</code></td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/inputtargetcomponent"><code>InputTargetComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/hovereffectcomponent"><code>HoverEffectComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/entitytargetvalue"><code>EntityTargetValue</code></a></td><td>entities (gesture side missing)</td><td><a href="07-realitykit.html">07</a> · <a href="10-gaps-roadmap.html">10</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/transform"><code>Transform</code></a>, <code>position</code>, <code>orientation</code>, <code>scale</code></td><td><code>LinkEntity</code>, <code>PipelineGraphEntity</code></td><td><a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/sceneevents/update"><code>SceneEvents.Update</code></a>, <a href="https://developer.apple.com/documentation/realitykit/implementing-systems-for-entities-in-a-scene">custom <code>System</code>s</a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/viewattachmentcomponent"><code>ViewAttachmentComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/textcomponent"><code>TextComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/billboardcomponent"><code>BillboardComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/opacitycomponent"><code>OpacityComponent</code></a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/realitykit/groundingshadowcomponent"><code>GroundingShadowComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/imagebasedlightcomponent"><code>ImageBasedLightComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/spatialaudiocomponent"><code>SpatialAudioComponent</code></a>, <a href="https://developer.apple.com/documentation/realitykit/accessibilitycomponent"><code>AccessibilityComponent</code></a></td><td>— (roadmap)</td><td><a href="10-gaps-roadmap.html">10</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Foundation, Observation, simd, Spatial</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Symbol</th><th>Used in</th><th>Chapter</th></tr></thead>
+<tbody>
+<tr><td><a href="https://developer.apple.com/documentation/observation/observable()"><code>@Observable</code></a>, <a href="https://developer.apple.com/documentation/observation">Observation</a></td><td><code>AppState</code></td><td><a href="03-state-concurrency.html">03</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/task"><code>Task</code></a>, <a href="https://developer.apple.com/documentation/swift/task/sleep(for:tolerance:clock:)"><code>Task.sleep</code></a>, <a href="https://developer.apple.com/documentation/swift/mainactor"><code>@MainActor</code></a>, <a href="https://developer.apple.com/documentation/swift/actor"><code>actor</code></a>, <a href="https://developer.apple.com/documentation/swift/sendable"><code>Sendable</code></a></td><td><code>AppState</code>, <code>TerasliceAPIClient</code></td><td><a href="03-state-concurrency.html">03</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/foundation/urlsession"><code>URLSession</code></a>, <a href="https://developer.apple.com/documentation/foundation/urlrequest"><code>URLRequest</code></a>, <a href="https://developer.apple.com/documentation/foundation/httpurlresponse"><code>HTTPURLResponse</code></a>, <a href="https://developer.apple.com/documentation/foundation/urlcomponents"><code>URLComponents</code></a></td><td><code>TerasliceAPIClient</code></td><td><a href="05-networking.html">05</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/codable"><code>Codable</code></a>, <a href="https://developer.apple.com/documentation/swift/codingkey"><code>CodingKey</code></a>, <a href="https://developer.apple.com/documentation/foundation/jsondecoder"><code>JSONDecoder</code></a>, <a href="https://developer.apple.com/documentation/swift/keyeddecodingcontainer"><code>KeyedDecodingContainer</code></a></td><td>all four model files</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swift/identifiable"><code>Identifiable</code></a>, <a href="https://developer.apple.com/documentation/swift/hashable"><code>Hashable</code></a>, <a href="https://developer.apple.com/documentation/swift/equatable"><code>Equatable</code></a>, <a href="https://developer.apple.com/documentation/swift/result"><code>Result</code></a></td><td>models, API client</td><td><a href="04-models-json.html">04</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/foundation/uuid"><code>UUID</code></a>, <a href="https://developer.apple.com/documentation/foundation/url"><code>URL</code></a>, <a href="https://developer.apple.com/documentation/foundation/date"><code>Date</code></a>, <code>TimeInterval</code>, <a href="https://developer.apple.com/documentation/foundation/localizederror"><code>LocalizedError</code></a></td><td><code>ServerConfig</code>, <code>AppState</code>, <code>APIError</code></td><td><a href="04-models-json.html">04</a> · <a href="05-networking.html">05</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/simd">simd</a>, <a href="https://developer.apple.com/documentation/swift/simd3"><code>SIMD3&lt;Float&gt;</code></a>, <a href="https://developer.apple.com/documentation/simd/simd_quatf"><code>simd_quatf</code></a></td><td><code>ForceSimulation3D</code>, entities</td><td><a href="06-layout-simd.html">06</a> · <a href="07-realitykit.html">07</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/spatial">Spatial</a>, <a href="https://developer.apple.com/documentation/spatial/rotation3d"><code>Rotation3D</code></a></td><td><code>PipelineVolumeView</code> (declared, unused)</td><td><a href="08-swiftui-ui.html">08</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/os/logger"><code>Logger</code></a>, <a href="https://developer.apple.com/documentation/foundation/urlprotocol"><code>URLProtocol</code></a>, <a href="https://developer.apple.com/documentation/swiftdata">SwiftData</a></td><td>— (roadmap)</td><td><a href="05-networking.html">05</a> · <a href="09-build-test.html">09</a></td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/xctest">XCTest</a>, <a href="https://developer.apple.com/documentation/testing">Swift Testing</a></td><td><code>Tests/Teraslice3DTests</code></td><td><a href="09-build-test.html">09</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="tooling">Tooling &amp; configuration</h2>
+<div class="refs">
+    <span class="label">Build, ship, debug</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://www.swift.org/documentation/package-manager/">Swift Package Manager</a> · <a href="https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html"><code>PackageDescription</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/xcode/build-settings-reference">Xcode Build Settings Reference</a> · <a href="https://developer.apple.com/documentation/xcode/running-your-app-in-simulator-or-on-a-device">Running your app in Simulator or on a device</a> · <a href="https://developer.apple.com/documentation/xcode/devices-and-simulator">Devices and Simulator</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/bundleresources/information_property_list/uiapplicationscenemanifest"><code>UIApplicationSceneManifest</code></a> · <a href="https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity"><code>NSAppTransportSecurity</code></a> · <a href="https://developer.apple.com/documentation/security/preventing-insecure-network-connections">Preventing insecure network connections</a></li>
+        <li><span class="kind">tools</span><a href="https://developer.apple.com/sf-symbols/">SF Symbols</a> · <a href="https://developer.apple.com/documentation/realitycomposerpro">Reality Composer Pro</a> · <a href="https://developer.apple.com/augmented-reality/tools/">Apple's AR tools</a></li>
+    </ul>
+</div>
+
+<h2 id="background">Domain &amp; algorithm background</h2>
+<div class="refs">
+    <span class="label">Teraslice and graph layout</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://terascope.github.io/teraslice/">Teraslice documentation</a> — jobs, workers, assets, executions; what the graph represents.</li>
+        <li><span class="kind">repo</span><a href="https://github.com/terascope/teraslice/issues/4254">teraslice#4254</a> — the v3 job-config changes (<code>_api_name</code>, <code>apis</code>) the backend parses.</li>
+        <li><span class="kind">repo</span><a href="https://github.com/vasturiano/3d-force-graph">3d-force-graph</a> · <a href="https://github.com/vasturiano/d3-force-3d">d3-force-3d</a> — the web frontend's renderer and the layout engine <code>ForceSimulation3D</code> ports.</li>
+        <li><span class="kind">wiki</span><a href="https://en.wikipedia.org/wiki/Force-directed_graph_drawing">Force-directed graph drawing</a> · <a href="https://en.wikipedia.org/wiki/Barnes%E2%80%93Hut_simulation">Barnes–Hut simulation</a> · <a href="https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation">Quaternions and spatial rotation</a></li>
+        <li><span class="kind">article</span><a href="http://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/">Evenly distributing points on a sphere</a> — the Fibonacci lattice used for seeding.</li>
+    </ul>
+</div>
+
+<h2 id="in-repo">In-repo documents</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>File</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td><code>AVP-SPEC.md</code></td><td>The visionOS app's design spec: feature-parity matrix vs the web frontend, four implementation chunks, progress tracker.</td></tr>
+<tr><td><code>CLAUDE.md</code></td><td>Repo conventions, backend architecture, Teraslice v3 parsing rules, known limitations.</td></tr>
+<tr><td><code>docs/index.html</code></td><td><a href="../index.html">Spatial UI Architecture Guide</a> — annotated screenshot of the running app.</td></tr>
+<tr><td><code>TODO/</code>, <code>TODO-volumetric-graph.md</code></td><td>Working notes on the volumetric projection work described in chapters 06–07.</td></tr>
+<tr><td><code>backend/app/lib/ts.py</code></td><td><code>JobInfo</code> / <code>StorageNode</code> — where node ids and connector types are actually produced.</td></tr>
+<tr><td><code>frontend/src/</code></td><td>The Three.js client; useful for comparing colour choices, worker scaling and reconciliation logic.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="pager">
+    <a href="10-gaps-roadmap.html"><span class="dir">← Previous</span><span class="ttl">10 · Gaps &amp; roadmap</span></a>
+    <a class="next" href="index.html"><span class="dir">Back to →</span><span class="ttl">00 · Overview &amp; map</span></a>
+</div>
+
+<footer class="page-footer">
+    Teraslice 3D · visionOS code &amp; SDK guide · links verified against
+    <code>developer.apple.com</code> at time of writing.
+</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

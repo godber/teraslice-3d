@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 · Build &amp; test — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">09 · Build &amp; test</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a class="current" href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 09 · Toolchain</div>
+<h1>Build &amp; test</h1>
+<p class="lede">
+    The project has two build systems on purpose: SwiftPM for fast, headless logic tests on your Mac,
+    and an Xcode project for the actual visionOS app. Here's how to drive both, what the nine tests
+    cover, and what isn't tested at all.
+</p>
+
+<div class="chips">
+    <span class="chip hl">swift test</span>
+    <span class="chip hl">xcodebuild</span>
+    <span class="chip">visionOS Simulator</span>
+    <span class="chip">XCTest</span>
+    <span class="chip">Swift Testing</span>
+</div>
+
+<h2 id="two-systems">Two manifests, one <code>Sources/</code></h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th></th><th><code>Package.swift</code></th><th><code>Teraslice3D.xcodeproj</code></th></tr></thead>
+<tbody>
+<tr><td>Platform built</td><td>macOS (arm64) — and visionOS is declared but not what you get from <code>swift build</code> on a Mac</td><td>visionOS device + simulator (<code>xros</code>, <code>xrsimulator</code>)</td></tr>
+<tr><td>Produces</td><td>A macOS executable + a test bundle</td><td><code>Teraslice3D.app</code></td></tr>
+<tr><td>Renders the graph?</td><td>No — the <code>#else</code> branch of <code>PipelineVolumeView</code> draws a 2D summary</td><td>Yes — <code>RealityView</code> in a volume</td></tr>
+<tr><td>Runs the tests?</td><td>Yes, in a fraction of a second</td><td>Not configured — the test target isn't in the Xcode project</td></tr>
+<tr><td>File list</td><td>Implicit: everything under <code>path: "Sources"</code></td><td>Explicit: 13 <code>PBXFileReference</code> entries</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout note">
+    <div class="ico">⚠️</div>
+    <div>
+        <span class="label">Adding a file means touching both</span>
+        <p>
+            SwiftPM picks up new files under <code>Sources/</code> automatically; the Xcode project does
+            not — each file is listed individually in <code>project.pbxproj</code>. A new file added
+            outside Xcode will compile under <code>swift build</code> and be silently missing from the
+            app, producing confusing "cannot find X in scope" errors only in the visionOS build. Add
+            files <em>through Xcode</em>, or remember to update both.
+        </p>
+    </div>
+</div>
+
+<h2 id="running">Running it</h2>
+
+<h3>Logic tests, no simulator (seconds)</h3>
+<div class="codeblock">
+<div class="filename">Terminal<span class="lines">—</span></div>
+<pre>cd Teraslice3D-visionOS
+swift build          # builds the macOS slice
+swift test           # runs the 9 XCTest cases</pre>
+</div>
+<p>
+    Verified with the toolchain in this repo (Xcode 26.6, Swift 6.3.3): all nine tests pass in about
+    0.03 s. This is the fast feedback loop for anything in <code>Models/</code> or
+    <code>Services/</code>.
+</p>
+
+<h3>The app, in the simulator</h3>
+<p>
+    The straightforward path is Xcode: open <code>Teraslice3D.xcodeproj</code>, pick an <em>Apple
+    Vision Pro</em> simulator destination, press ⌘R. From the command line:
+</p>
+<div class="codeblock">
+<div class="filename">Terminal<span class="lines">—</span></div>
+<pre># what destinations exist for this scheme
+xcodebuild -project Teraslice3D.xcodeproj -scheme Teraslice3D -showdestinations
+
+# build for the simulator
+xcodebuild -project Teraslice3D.xcodeproj -scheme Teraslice3D \
+           -destination 'platform=visionOS Simulator,name=Apple Vision Pro' build
+
+# which visionOS SDKs are installed
+xcodebuild -showsdks | grep -i visionos</pre>
+</div>
+<p>
+    The visionOS platform support (SDK + simulator runtime) is a separate download in
+    <em>Xcode → Settings → Components</em>; without it, <code>-showdestinations</code> lists only
+    placeholders and the build fails.
+</p>
+
+<h3>With the backend attached</h3>
+<div class="codeblock">
+<div class="filename">Terminal — from the repo root<span class="lines">—</span></div>
+<pre>cd backend
+TERASLICE_URL="http://your-teraslice:5678" uv run python -m fastapi dev
+# serves http://127.0.0.1:8000 — the app's ServerConfig.defaultLocal</pre>
+</div>
+<p>
+    In the simulator, <code>127.0.0.1</code> is the host Mac, so this works unchanged. On a real Vision
+    Pro, use the Mac's LAN address via <em>Settings → Add Custom Server</em> in the app, and bind the
+    backend to <code>0.0.0.0</code>. Running on device also requires enabling Developer Mode on the
+    headset and a signing team on the target. If nothing is listening, the app shows mock data rather
+    than an error — see the warning in <a href="05-networking.html">chapter 05</a>.
+</p>
+
+<h3>Navigating the simulator</h3>
+<ul>
+    <li>Look-and-click is simulated with the mouse; hold <strong>option</strong> and drag to move the "hands"/pinch, and use the arrow keys or WASD-style controls in the simulator's control bar to move your viewpoint around the scene.</li>
+    <li>Because you can move the camera, the simulator is the fastest way to check that the graph is actually 3D and centred — it's easy to build something that looks fine head-on and is a flat plane from the side.</li>
+    <li>The simulator does not reproduce real-world lighting or passthrough, so materials and contrast should be sanity-checked on device before you trust them.</li>
+</ul>
+
+<h2 id="tests">What the nine tests cover</h2>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Test</th><th>Asserts</th></tr></thead>
+<tbody>
+<tr><td><code>testMockGraphProviderData</code></td><td>Fixture is non-empty and at least one node is classified as incoming Kafka.</td></tr>
+<tr><td><code>testAPIClientMockFallback</code></td><td><code>fetchPipelineGraph</code> with <code>isMock</code> returns a populated graph without touching the network.</td></tr>
+<tr><td><code>testJobDetailsStatusParsing</code></td><td>The nested <code>ex._status</code> decoder produces <code>.running</code> from a literal JSON string.</td></tr>
+<tr><td><code>testForceSimulationSetupAndTicks</code></td><td>Node/link counts populate, and no coordinate is <code>NaN</code> after 120 iterations. <em>The single most valuable test here</em> — NaN is the classic force-layout failure.</td></tr>
+<tr><td><code>testForceSimulationBounds</code></td><td>With <code>boundsHalfWidth = 0.40</code>, all coordinates stay clamped.</td></tr>
+<tr><td><code>testForceSimulationFitToVolume</code></td><td><code>fitToVolume</code> centres at the origin and respects the half-width. (Tests a method the app never calls — <a href="06-layout-simd.html">ch. 06</a>.)</td></tr>
+<tr><td><code>testVolumetricProjectionCenteringAndScaling</code></td><td>Projected positions are centred and fit ±0.35 m for a 0.70 m target span.</td></tr>
+<tr><td><code>testForceSimulationReconciliationPreservesPositions</code></td><td>Re-running <code>setup</code> keeps existing positions and zeroes velocity.</td></tr>
+<tr><td><code>testAdaptiveGeometryScaling</code></td><td>More workers → thicker pipe, and both ends stay inside the 2–15 mm clamp.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+    All nine use <a href="https://developer.apple.com/documentation/xctest">XCTest</a>: a
+    <code>final class … : XCTestCase</code>, methods prefixed <code>test</code>, and
+    <code>XCTAssert*</code> functions with a trailing message. Two Swift details worth noting:
+    <code>@testable import Teraslice3D</code> gives the test target access to
+    <code>internal</code> symbols, and <code>func testAPIClientMockFallback() async</code> shows that
+    XCTest methods can be <code>async</code> — no expectations or callbacks needed for actor calls.
+</p>
+
+<div class="callout note">
+    <div class="ico">🧪</div>
+    <div>
+        <span class="label">XCTest vs Swift Testing</span>
+        <p>
+            Apple's current test framework is
+            <a href="https://developer.apple.com/documentation/testing">Swift Testing</a> —
+            <code>@Test</code> functions, <code>#expect(…)</code> macros, parameterised cases, and
+            plain structs instead of <code>XCTestCase</code> subclasses. It ships with the toolchain and
+            coexists with XCTest in the same target (the <code>swift test</code> output above shows both
+            runners starting; the Swift Testing one finds zero tests). Nothing here needs migrating, but
+            new tests are nicer to write in it:
+        </p>
+<pre style="font-family:'Fira Code',monospace;font-size:0.8rem;color:#d7e2ec;margin:8px 0 0;">import Testing
+
+@Test("worker count scales pipe radius")
+func pipeRadius() {
+    #expect(radius(forWorkers: 200) &gt; radius(forWorkers: 1))
+}</pre>
+    </div>
+</div>
+
+<h3>What isn't tested</h3>
+<ul>
+    <li><strong>The HTTP paths.</strong> Only the <code>isMock</code> short-circuit is exercised; status-code handling, decode failures, and the fallback-to-mock behaviour never run. The <code>urlSession</code> injection point exists for exactly this — a <a href="https://developer.apple.com/documentation/foundation/urlprotocol"><code>URLProtocol</code></a> stub would cover all four endpoints without a server.</li>
+    <li><strong>Anything RealityKit.</strong> No test constructs a <code>NodeEntity</code> or <code>LinkEntity</code>. Notably, <code>testAdaptiveGeometryScaling</code> <em>re-implements</em> the worker-scaling formula in the test body rather than calling into <code>LinkEntity</code>, so the two copies can drift apart and the test would still pass. Extracting the formula into a plain, platform-independent function would make it genuinely covered.</li>
+    <li><strong>The views.</strong> No snapshot or UI tests; SwiftUI previews aren't used either, and they'd be the cheapest win here (<code>#Preview</code> works for the ornament, list and form).</li>
+    <li><strong>CI.</strong> <code>.github/workflows/test.yml</code> runs the Python backend tests and a Docker build on <code>ubuntu-latest</code>; nothing builds or tests the Swift. Adding <code>swift test</code> requires a macOS runner, and a full <code>xcodebuild</code> for visionOS requires one with the visionOS SDK installed.</li>
+</ul>
+
+<div class="callout tip">
+    <div class="ico">🔍</div>
+    <div>
+        <span class="label">Debugging tools worth knowing</span>
+        <p>
+            When geometry is missing or misplaced, the useful tools are Xcode's
+            <strong>RealityKit debugger</strong> (capture the running scene and inspect the entity
+            hierarchy, transforms and components live), <strong>Instruments</strong> with the RealityKit
+            templates for frame timing, and simply logging <code>entity.position</code> —
+            a <code>NaN</code> transform silently removes an entity from the render, which is the single
+            most common "nothing appears" cause in code like <code>LinkEntity</code>.
+        </p>
+    </div>
+</div>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://www.swift.org/documentation/package-manager/">Swift Package Manager</a> · <a href="https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html"><code>PackageDescription</code> reference</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/xcode/running-your-app-in-simulator-or-on-a-device">Running your app in Simulator or on a device</a> · <a href="https://developer.apple.com/documentation/xcode/build-settings-reference">Build Settings Reference</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/xcode/devices-and-simulator">Devices and Simulator</a> — installing platform runtimes, managing simulators.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/xctest">XCTest</a> · <a href="https://developer.apple.com/documentation/testing">Swift Testing</a> · <span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2024/10179/">WWDC24: Meet Swift Testing</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/foundation/urlprotocol"><code>URLProtocol</code></a> — the standard seam for stubbing <code>URLSession</code> in tests.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/previews-in-xcode">Previews in Xcode</a> — <code>#Preview</code> macro; works for visionOS views too.</li>
+        <li><span class="kind">repo</span><code>CLAUDE.md</code> — the repo's own pre-commit checklist (backend <code>pytest</code>, frontend <code>npm run build</code>); the Swift package isn't in it yet.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="08-swiftui-ui.html"><span class="dir">← Previous</span><span class="ttl">08 · SwiftUI spatial UI</span></a>
+    <a class="next" href="10-gaps-roadmap.html"><span class="dir">Next →</span><span class="ttl">10 · Gaps &amp; roadmap</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

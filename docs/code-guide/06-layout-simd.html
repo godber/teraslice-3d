@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 · Layout math &amp; simd — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">06 · Layout math &amp; simd</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a class="current" href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 06 · simd &amp; the layout engine</div>
+<h1>Layout math &amp; simd</h1>
+<p class="lede">
+    <code>ForceSimulation3D</code> is a from-scratch port of <code>d3-force-3d</code> in 172 lines of
+    Swift: Coulomb repulsion, Hooke springs, centring gravity, velocity damping, and simulated
+    annealing. It runs in abstract unitless space; a separate projection step turns that into metres.
+</p>
+
+<div class="chips">
+    <span class="chip hl">simd</span>
+    <span class="chip hl">SIMD3&lt;Float&gt;</span>
+    <span class="chip">force-directed layout</span>
+    <span class="chip">Fibonacci sphere</span>
+    <span class="chip">annealing</span>
+    <span class="chip">bounding-box projection</span>
+</div>
+
+<h2 id="two-spaces">Two coordinate spaces, and why</h2>
+<p>
+    The single most important architectural idea in the 3D half of this app:
+</p>
+
+<div class="diagram">
+<pre>
+  <b>Simulation space</b> (ℝ³, unitless)            <b>Volumetric space</b> (metres, RealityKit)
+  ────────────────────────────────           ─────────────────────────────────────
+  seed radius        2.0                     volume            1.0 × 1.0 × 1.0 m
+  ideal link length  1.5                     graph span        0.40 m  (targetVolumeSpan)
+  repulsion          50.0                    node radius       0.008 – 0.035 m
+  extent             grows with node count   link radius       0.002 – 0.015 m
+                          │
+                          └── VolumetricProjection:  p' = (p − centroid) · S
+                                                     S = 0.40 / maxExtent
+</pre>
+</div>
+
+<p>
+    Physics constants that produce a pleasing layout have nothing to do with how big the result should
+    look on your desk. Keeping them apart means the simulation can be tuned for topology while the
+    projection guarantees the graph always fits the volume — a nine-node graph and a
+    ninety-node graph both end up 40 cm across, just at different densities. The web frontend has the
+    same split implicitly (unitless d3 coordinates, then a camera that frames them); in a volume there
+    is no camera to move, so the scaling has to be explicit.
+</p>
+
+<h2 id="simd">The <code>simd</code> vocabulary</h2>
+<p>
+    <a href="https://developer.apple.com/documentation/simd">simd</a> is Apple's small-vector maths
+    library, mapping onto SIMD CPU instructions. <code>SIMD3&lt;Float&gt;</code> is three floats in one
+    register — the same type RealityKit uses for positions, so no conversion is ever needed.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Used here</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>SIMD3&lt;Float&gt;(x, y, z)</code>, <code>.zero</code>, <code>SIMD3(repeating:)</code></td><td>Construction. <code>.zero</code> is the idiom you'll see most.</td></tr>
+<tr><td><code>a + b</code>, <code>a - b</code>, <code>a * scalar</code>, <code>+=</code></td><td>Component-wise operators, no loops.</td></tr>
+<tr><td><code>simd_length(v)</code></td><td>Euclidean magnitude — distance when applied to a delta.</td></tr>
+<tr><td><code>simd_normalize(v)</code></td><td>Unit vector. <strong>Undefined for a zero vector</strong> — hence the guards in this file.</td></tr>
+<tr><td><code>simd_clamp(v, lo, hi)</code></td><td>Component-wise clamp; also works on scalars.</td></tr>
+<tr><td><code>simd_min</code> / <code>simd_max</code></td><td>Component-wise, used to accumulate a bounding box.</td></tr>
+<tr><td><code>simd_dot</code> / <code>simd_cross</code></td><td>Angle and perpendicular axis — used for link orientation in <a href="07-realitykit.html">chapter 07</a>.</td></tr>
+<tr><td><code>simd_quatf(angle:axis:)</code></td><td>Quaternion rotation, also chapter 07.</td></tr>
+<tr><td><code>v.x</code>, <code>v.y</code>, <code>v.z</code></td><td>Lane access; <code>v[0]</code> works too.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>Float</code>, not <code>Double</code></span>
+        <p>
+            All the 3D maths is single-precision. That's not laziness: RealityKit, Metal and the GPU
+            are <code>Float</code> throughout, and Swift will not implicitly convert between numeric
+            types — mixing in a <code>Double</code> means writing <code>Float(x)</code> conversions
+            everywhere. Note the explicit annotations in this file (<code>let radius: Float = 2.0</code>)
+            which exist precisely to stop literals defaulting to <code>Double</code>.
+        </p>
+    </div>
+</div>
+
+<h2 id="node3d">The particle</h2>
+<div class="codeblock">
+<div class="filename">Sources/Services/ForceSimulation3D.swift<span class="lines">lines 5–17</span></div>
+<pre><code class="swift">public struct Node3D: Identifiable, Sendable {
+    public let id: String
+    public var position: SIMD3&lt;Float&gt;
+    public var velocity: SIMD3&lt;Float&gt;
+    public var force: SIMD3&lt;Float&gt;
+
+    public init(id: String, position: SIMD3&lt;Float&gt; = .zero) {
+        self.id = id
+        self.position = position
+        self.velocity = .zero
+        self.force = .zero
+    }
+}</code></pre>
+</div>
+<p>
+    Classic Verlet-style bookkeeping: accumulate <code>force</code> this tick, integrate into
+    <code>velocity</code>, integrate that into <code>position</code>. Nodes live in a
+    <code>[String: Node3D]</code> keyed by the graph node id, so the simulation can be reconciled
+    against a new topology by id.
+</p>
+
+<h2 id="seeding">Seeding: the Fibonacci sphere</h2>
+<div class="codeblock">
+<div class="filename">Sources/Services/ForceSimulation3D.swift<span class="lines">lines 39–56</span></div>
+<pre><code class="swift">let count = Float(graph.nodes.count)
+for (index, node) in graph.nodes.enumerated() {
+    if let existingNode = previousNodes[node.id] {
+        // Topology reconciliation: preserve position, reset velocity
+        nodes[node.id] = Node3D(id: node.id, position: existingNode.position)
+    } else {
+        // Fibonacci sphere distribution for uniform initial 3D spacing
+        let phi = acos(1.0 - 2.0 * (Float(index) + 0.5) / max(count, 1.0))
+        let theta = Float.pi * (1.0 + sqrt(5.0)) * Float(index)
+        let radius: Float = 2.0
+
+        let x = radius * sin(phi) * cos(theta)
+        let y = radius * sin(phi) * sin(theta)
+        let z = radius * cos(phi)
+
+        nodes[node.id] = Node3D(id: node.id, position: SIMD3&lt;Float&gt;(x, y, z))
+    }
+}</code></pre>
+</div>
+
+<p>
+    Random initial positions make a force layout converge slowly and non-deterministically. A
+    <em>Fibonacci sphere</em> (also called a spherical Fibonacci lattice) spreads N points
+    near-uniformly over a sphere: <code>phi</code> walks the polar angle so equal-area bands get equal
+    point counts, and <code>theta</code> advances by the golden angle
+    <code>π(1 + √5)</code> each step so successive points never line up. The result is
+    deterministic, evenly spaced, and gives the solver a good starting guess.
+</p>
+
+<h3>Reconciliation — why the graph doesn't jump every 30 seconds</h3>
+<p>
+    <code>setup(graph:)</code> is called on every refresh. Nodes that already exist keep their
+    positions and have their velocity zeroed; only genuinely new nodes get seeded. This mirrors
+    <code>reconcileGraphData</code> in the web frontend and is what makes a 30-second poll feel like a
+    live view rather than a reshuffle. The behaviour is pinned by a test
+    (<code>testForceSimulationReconciliationPreservesPositions</code>).
+</p>
+<p>
+    One consequence worth knowing: a node that disappears from the topology is dropped entirely, and if
+    it comes back it is re-seeded from scratch at whatever index it now occupies.
+</p>
+
+<h2 id="tick">One tick of the solver</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Services/ForceSimulation3D.swift<span class="lines">lines 60–135 (condensed)</span></div>
+<pre><code class="swift">public func tick(alpha: Float = 1.0) {
+    let keys = Array(nodes.keys)
+
+    // 1. Reset forces
+    for key in keys { nodes[key]?.force = .zero }
+
+    // 2. Coulomb node repulsion — every pair, O(n²)
+    for i in 0..&lt;keys.count {
+        for j in (i + 1)..&lt;keys.count {
+            var delta = nodeA.position - nodeB.position
+            var dist  = simd_length(delta)
+            if dist &lt; 0.001 {                       // coincident: jitter apart
+                delta = SIMD3&lt;Float&gt;(Float.random(in: -0.01...0.01), …)
+                dist  = simd_length(delta)
+            }
+            let distSq = max(0.01, dist * dist)     // avoid divide-by-zero blowup
+            let forceMagnitude = (repulsionStrength / distSq) * alpha
+            let forceVec = simd_normalize(delta) * forceMagnitude
+            nodes[idA]?.force += forceVec
+            nodes[idB]?.force -= forceVec           // equal and opposite
+        }
+    }
+
+    // 3. Hooke link attraction — springs pull toward idealLinkLength
+    for link in links {
+        let delta = nodeTarget.position - nodeSource.position
+        let dist  = simd_length(delta)
+        guard dist &gt; 0.0001 else { continue }
+        let displacement   = dist - idealLinkLength
+        let forceMagnitude = springStrength * displacement * alpha
+        let forceVec       = simd_normalize(delta) * forceMagnitude
+        nodes[link.source]?.force += forceVec
+        nodes[link.target]?.force -= forceVec
+    }
+
+    // 4. Gravity toward the origin, proportional to distance
+    for key in keys {
+        let dist = simd_length(node.position)
+        if dist &gt; 0.001 {
+            nodes[key]?.force += -simd_normalize(node.position) * (gravityStrength * dist) * alpha
+        }
+    }
+
+    // 5. Integrate
+    for key in keys {
+        node.velocity = (node.velocity + node.force) * damping
+        node.position += node.velocity
+        if let bounds = boundsHalfWidth {           // nil in production
+            node.position.x = simd_clamp(node.position.x, -bounds, bounds)
+            node.position.y = simd_clamp(node.position.y, -bounds, bounds)
+            node.position.z = simd_clamp(node.position.z, -bounds, bounds)
+        }
+        nodes[key] = node
+    }
+}</code></pre>
+</div>
+
+<h3>The four forces</h3>
+<ul>
+    <li><strong>Repulsion</strong> — inverse-square, like charged particles: <code>F = k / d²</code>. Pushes unconnected nodes apart so the graph spreads out. This is the term that costs O(n²).</li>
+    <li><strong>Springs</strong> — linear in displacement from <code>idealLinkLength</code>: <code>F = k(d − L)</code>. Pulls connected nodes to a comfortable distance; pushes them apart if too close. Note the sign convention — the force is applied <em>toward</em> the target on the source and vice versa, so an over-long link contracts.</li>
+    <li><strong>Gravity</strong> — toward the origin, proportional to distance, which keeps disconnected components from drifting off to infinity. In a bounded volume that matters more than on an infinite web canvas.</li>
+    <li><strong>Damping</strong> — velocity is multiplied by <code>0.85</code> every tick, bleeding energy so the system settles instead of oscillating.</li>
+</ul>
+
+<h3>Annealing</h3>
+<div class="codeblock">
+<div class="filename">Sources/Services/ForceSimulation3D.swift<span class="lines">lines 166–171</span></div>
+<pre><code class="swift">public func runSimulation(iterations: Int = 120) {
+    for i in 0..&lt;iterations {
+        let alpha = max(0.01, 1.0 - (Float(i) / Float(iterations)))
+        tick(alpha: alpha)
+    }
+}</code></pre>
+</div>
+<p>
+    <code>alpha</code> ramps from 1.0 down to 0.01, scaling all three forces. Big moves early to escape
+    bad configurations, tiny moves late to settle — the same cooling schedule d3-force uses. 120
+    iterations is a fixed budget rather than a convergence test.
+</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Tunable</th><th>Value</th><th>Raise it to…</th></tr></thead>
+<tbody>
+<tr><td><code>repulsionStrength</code></td><td>50.0</td><td>spread nodes further apart</td></tr>
+<tr><td><code>springStrength</code></td><td>0.10</td><td>make links behave more rigidly</td></tr>
+<tr><td><code>idealLinkLength</code></td><td>1.50</td><td>lengthen edges relative to node spacing</td></tr>
+<tr><td><code>gravityStrength</code></td><td>0.05</td><td>pull the graph into a tighter ball</td></tr>
+<tr><td><code>damping</code></td><td>0.85</td><td>settle more slowly (→ 1.0 never settles)</td></tr>
+<tr><td><code>boundsHalfWidth</code></td><td><code>nil</code></td><td>hard-clamp simulation coordinates (used only by a test)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout note">
+    <div class="ico">🧮</div>
+    <div>
+        <span class="label">Clamping to a cube is not the same as fitting a sphere</span>
+        <p>
+            When <code>boundsHalfWidth</code> is set, each axis is clamped independently, so nodes pile
+            up flat against the faces of a cube. That's why the production path leaves it
+            <code>nil</code> and rescales afterwards instead — clamping distorts the layout, scaling
+            preserves it. The test <code>testForceSimulationBounds</code> exists to verify the clamp
+            still works if you turn it on.
+        </p>
+    </div>
+</div>
+
+<h2 id="projection">Projection: unitless → metres</h2>
+<div class="codeblock">
+<div class="filename">Sources/RealityKit/PipelineGraphEntity.swift<span class="lines">lines 6–37 (condensed)</span></div>
+<pre><code class="swift">public struct VolumetricProjection {
+    public let centroid: SIMD3&lt;Float&gt;
+    public let scale: Float
+    public let targetVolumeSpan: Float
+
+    public init(nodes: [Node3D], targetVolumeSpan: Float = 0.40) {
+        var minPos = SIMD3&lt;Float&gt;(repeating: Float.greatestFiniteMagnitude)
+        var maxPos = SIMD3&lt;Float&gt;(repeating: -Float.greatestFiniteMagnitude)
+        for node in nodes {
+            minPos = simd_min(minPos, node.position)
+            maxPos = simd_max(maxPos, node.position)
+        }
+
+        self.centroid = (minPos + maxPos) * 0.5
+        let extent    = maxPos - minPos
+        let maxExtent = max(extent.x, max(extent.y, extent.z))
+        self.scale    = targetVolumeSpan / max(maxExtent, 0.001)
+    }
+
+    public func project(_ position: SIMD3&lt;Float&gt;) -&gt; SIMD3&lt;Float&gt; {
+        (position - centroid) * scale
+    }
+}</code></pre>
+</div>
+
+<p>
+    A bounding-box fit, in three moves: accumulate min/max, take the box centre as the centroid, and
+    scale by <code>0.40 / longest axis</code>. Because the same factor applies to all three axes the
+    shape is never distorted, and because the centroid is subtracted the graph is always centred on the
+    volume's origin. <code>max(maxExtent, 0.001)</code> guards the single-node case where every extent
+    is zero.
+</p>
+<p>
+    A subtlety: the fit is computed from <em>node centres</em>, so a sphere's radius can push geometry
+    slightly past ±0.20 m. With a 1 m volume and node radii capped at 3.5 cm there's plenty of slack —
+    the test suite asserts the projected span stays inside ±0.35 m for a 0.70 m target.
+</p>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · two implementations of the same fit</span>
+        <p>
+            <code>ForceSimulation3D.fitToVolume(targetHalfWidth:)</code> does exactly what
+            <code>VolumetricProjection</code> does, but destructively rewrites the simulation's own
+            coordinates. Nothing in the render path calls it — only
+            <code>testForceSimulationFitToVolume</code>. Keeping both is a live trap: calling
+            <code>fitToVolume</code> would bake metres into the "unitless" space and the projection
+            would then scale it a second time. The projection version is the one to keep;
+            <code>fitToVolume</code> and its test are the ones to delete.
+        </p>
+    </div>
+</div>
+
+<h2 id="perf">Performance, honestly</h2>
+<ul>
+    <li>
+        <strong>O(n²) per tick × 120 ticks.</strong> For the 9-node fixture that's ~4,300 pair
+        computations total — nothing. At 100 nodes it's ~594,000; at 500 nodes ~15 million, and each
+        inner step also does two dictionary lookups and a copy-on-write. The backend caps job queries
+        at 500, so a large cluster is a realistic worry.
+    </li>
+    <li>
+        <strong>It runs synchronously on the main actor.</strong>
+        <code>updateGraph()</code> is <code>@MainActor</code> and calls
+        <code>runSimulation(iterations: 120)</code> inline, so the whole solve happens between two
+        frames of a 90 Hz display. On visionOS a dropped frame is felt more than on a screen — the
+        world visibly stutters. Moving the solve to a background <code>Task</code> (or making
+        <code>ForceSimulation3D</code> an <code>actor</code>) and only touching entities on the main
+        actor is the clean fix; see <a href="10-gaps-roadmap.html">chapter 10</a>.
+    </li>
+    <li>
+        <strong>Cheap structural wins:</strong> iterate a contiguous
+        <code>[Node3D]</code> array with an index-based id map instead of mutating through a dictionary;
+        hoist <code>nodes[key]</code> reads out of the inner loop; skip the repulsion pair loop entirely
+        beyond a distance cutoff. The textbook answer is a Barnes–Hut octree
+        (O(n log n)), which is what <code>d3-force-3d</code> uses under the hood.
+    </li>
+    <li>
+        <strong><code>Float.random</code> in the hot path</strong> only fires for coincident nodes, but
+        it does make the simulation non-deterministic in that case. Fine here; worth knowing if you ever
+        want reproducible layouts for screenshots or tests.
+    </li>
+</ul>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/simd">simd framework</a> · <a href="https://developer.apple.com/documentation/simd/simd_float3"><code>simd_float3</code> / <code>SIMD3&lt;Float&gt;</code></a> · <a href="https://developer.apple.com/documentation/accelerate/simd">Accelerate: working with vectors</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swift/simd3"><code>SIMD3</code> in the standard library</a> — the generic type simd's aliases point at.</li>
+        <li><span class="kind">repo</span><a href="https://github.com/vasturiano/d3-force-3d">d3-force-3d</a> — the JS engine this is a port of; its <code>forceManyBody</code> source is the Barnes–Hut reference.</li>
+        <li><span class="kind">repo</span><code>frontend/src/</code> — the web side's <code>reconcileGraphData</code>, whose behaviour <code>setup(graph:)</code> reproduces.</li>
+        <li><span class="kind">paper</span><a href="https://en.wikipedia.org/wiki/Force-directed_graph_drawing">Force-directed graph drawing</a> · <a href="https://en.wikipedia.org/wiki/Barnes%E2%80%93Hut_simulation">Barnes–Hut simulation</a> — background on the algorithm and the standard optimisation.</li>
+        <li><span class="kind">article</span><a href="http://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/">Evenly distributing points on a sphere</a> — where the Fibonacci lattice formula comes from.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="05-networking.html"><span class="dir">← Previous</span><span class="ttl">05 · Networking</span></a>
+    <a class="next" href="07-realitykit.html"><span class="dir">Next →</span><span class="ttl">07 · RealityKit entities</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>

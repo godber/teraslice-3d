@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 · SwiftUI spatial UI — Teraslice 3D visionOS Code Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+
+<div class="topbar">
+    <button class="btn" id="navToggle">☰ Contents</button>
+    <div class="brand"><a href="index.html">Teraslice 3D</a> <span class="brand-badge">visionOS</span></div>
+    <div class="crumb">08 · SwiftUI spatial UI</div>
+    <div class="spacer"></div>
+    <div class="topbar-links">
+        <a class="btn" href="../index.html">Spatial UI guide</a>
+        <a class="btn btn-primary" href="11-references.html">All references</a>
+    </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+    <h3>Start here</h3>
+    <ol><li><a href="index.html"><span class="num">00</span> Overview &amp; map</a></li></ol>
+    <h3>Swift &amp; the platform</h3>
+    <ol>
+        <li><a href="01-swift-tour.html"><span class="num">01</span> Swift tour, by example</a></li>
+        <li><a href="02-app-scenes.html"><span class="num">02</span> App, scenes &amp; volumes</a></li>
+        <li><a href="03-state-concurrency.html"><span class="num">03</span> State &amp; concurrency</a></li>
+    </ol>
+    <h3>Data layer</h3>
+    <ol>
+        <li><a href="04-models-json.html"><span class="num">04</span> Models &amp; Codable</a></li>
+        <li><a href="05-networking.html"><span class="num">05</span> Networking</a></li>
+    </ol>
+    <h3>The 3D half</h3>
+    <ol>
+        <li><a href="06-layout-simd.html"><span class="num">06</span> Layout math &amp; simd</a></li>
+        <li><a href="07-realitykit.html"><span class="num">07</span> RealityKit entities</a></li>
+        <li><a class="current" href="08-swiftui-ui.html"><span class="num">08</span> SwiftUI spatial UI</a></li>
+    </ol>
+    <h3>Tooling &amp; next steps</h3>
+    <ol>
+        <li><a href="09-build-test.html"><span class="num">09</span> Build &amp; test</a></li>
+        <li><a href="10-gaps-roadmap.html"><span class="num">10</span> Gaps &amp; roadmap</a></li>
+        <li><a href="11-references.html"><span class="num">11</span> Reference index</a></li>
+    </ol>
+    <div class="on-this-page" id="onThisPage"></div>
+</nav>
+
+<main>
+<div class="page-kicker">Chapter 08 · SwiftUI on visionOS</div>
+<h1>SwiftUI spatial UI</h1>
+<p class="lede">
+    Four views: the <code>RealityView</code> host, the floating control ornament, a jobs list, and a
+    settings form. Everything here is ordinary SwiftUI — the platform-specific parts are
+    <code>RealityView</code>, <code>.ornament</code>, and the fact that glass materials and hover
+    effects come for free.
+</p>
+
+<div class="chips">
+    <span class="chip hl">RealityView</span>
+    <span class="chip hl">.ornament</span>
+    <span class="chip">Material / glass</span>
+    <span class="chip">NavigationStack</span>
+    <span class="chip">Form · List</span>
+    <span class="chip">SF Symbols</span>
+    <span class="chip">sheet</span>
+</div>
+
+<h2 id="realityview">PipelineVolumeView — the SwiftUI ⇄ RealityKit bridge</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Views/PipelineVolumeView.swift<span class="lines">lines 7–29</span></div>
+<pre><code class="swift">public struct PipelineVolumeView: View {
+    @Environment(AppState.self) private var appState
+
+    @State private var graphEntity = PipelineGraphEntity()
+    @State private var rotation: Rotation3D = .identity
+
+    public var body: some View {
+        #if os(visionOS)
+        RealityView { content in
+            content.add(graphEntity)
+            graphEntity.updateGraph(appState.graphData)
+        } update: { content in
+            // Graph entity automatically updates child transforms
+        }
+        .onChange(of: appState.graphData) { _, newGraphData in
+            graphEntity.updateGraph(newGraphData)
+        }
+        .ornament(attachmentAnchor: .scene(.bottom)) {
+            ControlOrnamentView()
+                .environment(appState)
+        }
+        #else
+        …2D fallback…
+        #endif
+    }
+}</code></pre>
+</div>
+
+<h3><code>RealityView</code>'s two closures</h3>
+<ul>
+    <li>
+        <strong><code>make:</code></strong> runs <em>once</em>, when the view first appears. It receives
+        a <a href="https://developer.apple.com/documentation/realitykit/realityviewcontent"><code>RealityViewContent</code></a>
+        — the handle to the scene's root — and this is where you add your entity hierarchy. It can be
+        <code>async</code> if you need to load assets.
+    </li>
+    <li>
+        <strong><code>update:</code></strong> runs whenever SwiftUI state that the view <em>reads</em>
+        changes, and is meant for pushing state into the scene. Here it's empty, with the reasoning in a
+        comment: because <code>graphEntity</code> is a long-lived object mutated directly, nothing needs
+        to happen in <code>update</code>.
+    </li>
+    <li>
+        <strong><code>.onChange(of:)</code></strong> is doing the real work instead — it fires when
+        <code>appState.graphData</code> becomes a different value (hence <code>PipelineGraph:
+        Equatable</code>) and rebuilds the geometry. Functionally equivalent to doing the same test in
+        <code>update:</code>, and arguably clearer about <em>which</em> state matters.
+    </li>
+</ul>
+
+<div class="callout swift">
+    <div class="ico">🟠</div>
+    <div>
+        <span class="label">Swift note · <code>@State</code> holding a class instance</span>
+        <p>
+            <code>@State private var graphEntity = PipelineGraphEntity()</code> stores a reference type
+            in view state. This is the standard way to keep a RealityKit entity alive across body
+            re-evaluations — <code>PipelineVolumeView</code> is a struct that gets recreated constantly,
+            but the entity behind it persists. (<code>@State</code> initialises its value once, on first
+            appearance, and later re-inits of the struct don't reset it.)
+        </p>
+    </div>
+</div>
+
+<div class="callout gap">
+    <div class="ico">🔴</div>
+    <div>
+        <span class="label">Gap · no gestures, so the interaction components do nothing</span>
+        <p>
+            <code>NodeEntity</code> and <code>LinkEntity</code> both carry
+            <code>InputTargetComponent</code> and a collider, but nothing attaches a gesture to the
+            <code>RealityView</code>. On visionOS, entity taps arrive through SwiftUI:
+        </p>
+<pre style="font-family:'Fira Code',monospace;font-size:0.8rem;color:#d7e2ec;margin:8px 0 0;white-space:pre-wrap;">.gesture(
+    SpatialTapGesture()
+        .targetedToAnyEntity()
+        .onEnded { value in
+            if let node = value.entity as? NodeEntity { appState.selectedNodeID = node.nodeID }
+        }
+)</pre>
+        <p style="margin-top:10px;">
+            <code>.targetedToAnyEntity()</code> is the key modifier — it turns a 2D gesture into one
+            that reports which entity was hit, via
+            <a href="https://developer.apple.com/documentation/realitykit/entitytargetvalue"><code>EntityTargetValue</code></a>.
+            Add that and <code>selectedNodeID</code> stops being dead state. <code>DragGesture</code>
+            and <a href="https://developer.apple.com/documentation/swiftui/rotategesture3d"><code>RotateGesture3D</code></a>
+            work the same way for direct manipulation — which is also what the unused
+            <code>@State private var rotation: Rotation3D</code> (and the <code>import Spatial</code>
+            above it) was clearly staged for.
+        </p>
+    </div>
+</div>
+
+<h3>The non-visionOS fallback</h3>
+<p>
+    The <code>#else</code> branch renders a plain SwiftUI summary — an SF Symbol, the server name and
+    version, and two <code>.thinMaterial</code> cards listing the first five nodes and links. It exists
+    so <code>swift build</code> works on macOS, and it doubles as a quick way to sanity-check the data
+    layer without booting the simulator. Note it's the only place <code>appState.start()</code> is
+    called, from <code>.task { }</code>.
+</p>
+
+<h2 id="ornament">Ornaments: UI that floats outside the window</h2>
+<p>
+    An <a href="https://developer.apple.com/documentation/swiftui/view/ornament(visibility:attachmentanchor:contentalignment:ornament:)">ornament</a>
+    is a visionOS-specific presentation: a small view anchored to the edge of a window or volume,
+    floating slightly in front of it in depth. Toolbars, tab bars and media controls on visionOS are
+    all ornaments. <code>.scene(.bottom)</code> anchors this one below the volume — you can see it in
+    the annotated <a href="../index.html">spatial UI screenshot</a>.
+</p>
+
+<div class="codeblock">
+<div class="filename">Sources/Views/ControlOrnamentView.swift<span class="lines">lines 11–81 (condensed)</span></div>
+<pre><code class="swift">HStack(spacing: 16) {
+    Menu {                                        // server selector
+        ForEach(appState.serverList) { server in
+            Button(action: { appState.switchServer(server) }) {
+                HStack {
+                    Text(server.name)
+                    if server.id == appState.activeServer.id { Image(systemName: "checkmark") }
+                }
+            }
+        }
+    } label: {
+        Label(appState.activeServer.name, systemImage: "server.rack").font(.subheadline)
+    }
+    .buttonStyle(.bordered)
+
+    Divider().frame(height: 20)
+
+    HStack {                                      // search field
+        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+        TextField("Search nodes or jobs...", text: Bindable(appState).searchText)
+            .textFieldStyle(.plain)
+            .frame(width: 180)
+    }
+    .padding(.horizontal, 10).padding(.vertical, 6)
+    .background(.ultraThinMaterial, in: Capsule())
+
+    Picker("Filter Mode", selection: Bindable(appState).filterMode) {
+        ForEach(FilterMode.allCases) { mode in Text(mode.rawValue).tag(mode) }
+    }
+    .pickerStyle(.segmented)
+    .frame(width: 180)
+
+    Button(action: { Task { await appState.refreshData() } }) {
+        Image(systemName: "arrow.clockwise")
+            .rotationEffect(.degrees(appState.isRefreshing ? 360 : 0))
+            .animation(appState.isRefreshing
+                       ? .linear(duration: 1).repeatForever(autoreverses: false)
+                       : .default, value: appState.isRefreshing)
+    }
+    .help("Refresh Pipeline Data")
+
+    Button(action: { showSettings.toggle() }) { Image(systemName: "gear") }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+}
+.padding(.horizontal, 16).padding(.vertical, 10)
+.background(.regularMaterial, in: Capsule())</code></pre>
+</div>
+
+<h3>The SwiftUI idioms in that block</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Idiom</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>HStack { … }</code> / <code>VStack</code> / <code>Divider()</code></td><td>Layout primitives. <code>spacing:</code> and <code>.padding</code> are how visionOS UI gets its generous touch targets.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/menu"><code>Menu { } label: { }</code></a></td><td>A pull-down menu; two trailing closures for content and label.</td></tr>
+<tr><td><code>Label(_:systemImage:)</code> + <code>Image(systemName:)</code></td><td><a href="https://developer.apple.com/sf-symbols/">SF Symbols</a> — <code>server.rack</code>, <code>magnifyingglass</code>, <code>arrow.clockwise</code>, <code>gear</code>, <code>cpu</code>, <code>trash</code>, <code>cube.transparent.fill</code>. Vector, weight-matched to text, and free.</td></tr>
+<tr><td><code>ForEach(appState.serverList)</code></td><td>No <code>id:</code> needed because <code>ServerConfig</code> is <code>Identifiable</code>.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/material"><code>.background(.ultraThinMaterial, in: Capsule())</code></a></td><td>System glass, clipped to a shape. <code>.ultraThin</code> → <code>.regular</code> → <code>.thick</code> trade legibility against seeing your room through it. This is the visionOS look, and you get it by <em>not</em> hand-rolling colours.</td></tr>
+<tr><td><code>.pickerStyle(.segmented)</code>, <code>.buttonStyle(.bordered)</code>, <code>.textFieldStyle(.plain)</code></td><td>Style modifiers — the same control adapts per platform.</td></tr>
+<tr><td><code>.rotationEffect</code> + <a href="https://developer.apple.com/documentation/swiftui/view/animation(_:value:)"><code>.animation(_:value:)</code></a></td><td>The spinning refresh icon: a repeating linear animation driven by <code>isRefreshing</code>.</td></tr>
+<tr><td><a href="https://developer.apple.com/documentation/swiftui/view/sheet(ispresented:ondismiss:content:)"><code>.sheet(isPresented: $showSettings)</code></a></td><td>Modal presentation bound to a <code>@State Bool</code>. <code>$</code> makes the two-way binding.</td></tr>
+<tr><td><code>Task { await appState.refreshData() }</code></td><td>Button actions are synchronous, so async work is wrapped in a <code>Task</code>. Extremely common pattern.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout note">
+    <div class="ico">🎛️</div>
+    <div>
+        <span class="label">Two rough edges in this view</span>
+        <p>
+            <code>@State private var showInspector = false</code> is declared and never used —
+            <code>JobsInspectorView</code> has no way to be presented, despite being fully written.
+            And <code>.help("Refresh Pipeline Data")</code> is a hover-tooltip affordance inherited
+            from macOS; on visionOS, prefer <code>.accessibilityLabel</code> plus a visible label for
+            anything a user needs to understand, since an icon-only button in a glass capsule is not
+            self-explanatory.
+        </p>
+    </div>
+</div>
+
+<div class="callout note">
+    <div class="ico">🪟</div>
+    <div>
+        <span class="label">Sheets presented from a volume</span>
+        <p>
+            Both <code>SettingsView</code> and (eventually) the jobs inspector are presented as
+            <code>.sheet</code>s from a view inside an ornament attached to a volume. That nesting is
+            worth testing early on device — modal presentation semantics differ between windows and
+            volumes, and for a settings panel of this size a separate
+            <code>WindowGroup</code> opened with <code>openWindow(id:)</code> is often the better
+            spatial design: it can be placed wherever the user wants and stays visible next to the
+            graph, instead of covering it.
+        </p>
+    </div>
+</div>
+
+<h2 id="lists">JobsInspectorView — lists, navigation, toolbars</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Views/JobsInspectorView.swift<span class="lines">lines 9–52 (condensed)</span></div>
+<pre><code class="swift">NavigationStack {
+    List {
+        Section("Jobs (\(appState.jobs.count))") {
+            ForEach(appState.jobs) { job in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(job.name).font(.headline)
+                        Spacer()
+                        Text(job.status.rawValue.capitalized)
+                            .font(.caption)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(statusColor(job.status).opacity(0.2), in: Capsule())
+                            .foregroundStyle(statusColor(job.status))
+                    }
+                    HStack {
+                        Label("\(job.workers) Workers", systemImage: "cpu")
+                        Spacer()
+                        Text("ID: \(job.job_id.prefix(8))...")
+                            .font(.caption2).monospaced().foregroundStyle(.secondary)
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+    .navigationTitle("Jobs &amp; Connectors")
+    .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+            Button("Done") { dismiss() }
+        }
+    }
+}
+.frame(minWidth: 500, minHeight: 600)</code></pre>
+</div>
+
+<p>Worth noting:</p>
+<ul>
+    <li><strong><a href="https://developer.apple.com/documentation/swiftui/navigationstack"><code>NavigationStack</code></a></strong> provides the title and toolbar; it's the current API (<code>NavigationView</code> is deprecated).</li>
+    <li><strong><code>Spacer()</code></strong> inside an <code>HStack</code> pushes its neighbours apart — the standard way to right-align.</li>
+    <li><strong>Semantic fonts and colours</strong> — <code>.headline</code>, <code>.caption</code>, <code>.secondary</code> — adapt to the user's text size and to visionOS's own contrast rules. Prefer them to hard-coded sizes.</li>
+    <li><strong><code>.toolbar { ToolbarItem(placement: .confirmationAction) }</code></strong> + <a href="https://developer.apple.com/documentation/swiftui/environmentvalues/dismiss"><code>@Environment(\.dismiss)</code></a> — the standard "Done" affordance for a modal. <code>dismiss</code> is a callable value: <code>dismiss()</code>.</li>
+    <li><strong><code>statusColor(_:)</code></strong> is a private helper duplicating the switch already present in <code>JobStatus.statusColorName</code> and in <code>LinkEntity.material(for:)</code> — three copies of one mapping. A single <code>var color: Color</code> on <code>JobStatus</code> would be the fix, and would keep the volume's pipe colours and the list's badges guaranteed in sync.</li>
+</ul>
+
+<h2 id="forms">SettingsView — forms and destructive actions</h2>
+
+<div class="codeblock">
+<div class="filename">Sources/Views/SettingsView.swift<span class="lines">lines 14–63 (condensed)</span></div>
+<pre><code class="swift">Form {
+    Section("Backend Servers") { … }
+
+    Section("Add Custom Server") {
+        TextField("Server Name (e.g. Production Cluster)", text: $newServerName)
+        TextField("Base URL (e.g. http://192.168.1.50:8000)", text: $newServerURL)
+        Button("Add Server") {
+            guard !newServerName.isEmpty, !newServerURL.isEmpty else { return }
+            let newConfig = ServerConfig(name: newServerName, baseURLString: newServerURL, isMock: false)
+            appState.serverList.append(newConfig)
+            appState.switchServer(newConfig)
+            newServerName = ""
+            newServerURL = ""
+        }
+        .disabled(newServerName.isEmpty || newServerURL.isEmpty)
+    }
+
+    Section("Cache Controls") {
+        Button(role: .destructive, action: {
+            Task {
+                let success = await appState.clearServerCache()
+                cacheClearedMessage = success ? "Cache cleared successfully!" : "Failed to clear cache."
+            }
+        }) {
+            Label("Clear Teraslice Backend Cache", systemImage: "trash")
+        }
+
+        if let msg = cacheClearedMessage { Text(msg).font(.caption).foregroundStyle(.secondary) }
+    }
+}</code></pre>
+</div>
+
+<ul>
+    <li><strong><a href="https://developer.apple.com/documentation/swiftui/form"><code>Form</code></a> + <code>Section</code></strong> — grouped settings layout, styled per platform.</li>
+    <li><strong><code>$newServerName</code></strong> — the projected value of a <code>@State</code>, i.e. a <code>Binding&lt;String&gt;</code>. Compare with <code>Bindable(appState).searchText</code> in the ornament: same concept, different source of truth.</li>
+    <li><strong><code>Button(role: .destructive)</code></strong> — semantic role; the system renders it in red. Note there's no confirmation step before clearing a shared backend cache; a <code>.confirmationDialog</code> would be appropriate.</li>
+    <li><strong><code>.disabled(…)</code></strong> — declarative enablement, derived from state rather than toggled imperatively.</li>
+    <li><strong>The <code>guard … else { return }</code></strong> inside the button duplicates the <code>.disabled</code> condition. Harmless belt-and-braces.</li>
+    <li><strong>No validation of the URL</strong> — a typo produces a <code>ServerConfig</code> whose <code>baseURL</code> is <code>nil</code>, which fails silently into mock data (<a href="05-networking.html">chapter 05</a>). And nothing is persisted across launches.</li>
+</ul>
+
+<div class="refs">
+    <span class="label">References for this chapter</span>
+    <ul>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/realitykit/realityview"><code>RealityView</code></a> · <a href="https://developer.apple.com/documentation/realitykit/realityviewcontent"><code>RealityViewContent</code></a> · <a href="https://developer.apple.com/documentation/realitykit/realityview/init(make:update:attachments:)">the attachments initialiser</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/view/ornament(visibility:attachmentanchor:contentalignment:ornament:)"><code>.ornament</code></a> · <a href="https://developer.apple.com/design/human-interface-guidelines/ornaments">HIG: Ornaments</a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/material"><code>Material</code></a> · <a href="https://developer.apple.com/design/human-interface-guidelines/materials">HIG: Materials</a> — when to use which glass.</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/gestures">SwiftUI gestures</a> · <a href="https://developer.apple.com/documentation/swiftui/spatialtapgesture"><code>SpatialTapGesture</code></a> · <a href="https://developer.apple.com/documentation/swiftui/rotategesture3d"><code>RotateGesture3D</code></a> · <a href="https://developer.apple.com/documentation/realitykit/entitytargetvalue"><code>EntityTargetValue</code></a></li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/documentation/swiftui/navigationstack"><code>NavigationStack</code></a> · <a href="https://developer.apple.com/documentation/swiftui/list"><code>List</code></a> · <a href="https://developer.apple.com/documentation/swiftui/form"><code>Form</code></a> · <a href="https://developer.apple.com/documentation/swiftui/picker"><code>Picker</code></a> · <a href="https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)"><code>.searchable</code></a> (the system alternative to the hand-built search capsule)</li>
+        <li><span class="kind">docs</span><a href="https://developer.apple.com/sf-symbols/">SF Symbols</a> — browse and copy symbol names with the free Mac app.</li>
+        <li><span class="kind">video</span><a href="https://developer.apple.com/videos/play/wwdc2023/10113/">WWDC23: Take SwiftUI to the next dimension</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10073/">Design for spatial input</a> · <a href="https://developer.apple.com/videos/play/wwdc2023/10203/">Develop your first immersive app</a></li>
+        <li><span class="kind">tutorial</span><a href="https://developer.apple.com/tutorials/swiftui">SwiftUI tutorials</a> — if the layout system itself is new to you, start here.</li>
+    </ul>
+</div>
+
+<div class="pager">
+    <a href="07-realitykit.html"><span class="dir">← Previous</span><span class="ttl">07 · RealityKit entities</span></a>
+    <a class="next" href="09-build-test.html"><span class="dir">Next →</span><span class="ttl">09 · Build &amp; test</span></a>
+</div>
+
+<footer class="page-footer">Teraslice 3D · visionOS code &amp; SDK guide</footer>
+</main>
+</div>
+
+<script src="assets/guide.js"></script>
+</body>
+</html>
