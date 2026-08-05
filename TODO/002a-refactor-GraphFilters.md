@@ -246,3 +246,68 @@ to filter semantics.
 
 Estimate: small/medium. Mostly moving code, one method with real thought in it
 (`setVisibleData`).
+
+---
+
+## 📝 Implementation Notes
+
+What landed, and where it diverged from the plan above.
+
+### As planned
+
+- `frontend/src/graph/GraphView.ts` — the interface, verbatim.
+- `frontend/src/graph/graphUtils.ts` — shared `endpointId()`. Chose a new
+  module over `types/graph.ts`, which is types-only and shouldn't carry runtime
+  code. Also did the suggested tidy-up: the five open-coded
+  `typeof x === 'object' ? x.id : x` copies in `GraphRenderer` now go through
+  it, behind a module-level `linkKey()` helper shared by `reconcileGraphData()`,
+  `hasTopologyChanged()`, and `updatePropertiesInPlace()`.
+- `GraphFilters` — one `view: GraphView | null`, `setView()`, no `three` or
+  `3d-force-graph` reference of any kind. `applyHighlightMode()` went from 35
+  lines to 3. `computeFilter()` and the `notifyFilterChange()` ordering are
+  untouched.
+- `GraphRenderer` — `implements GraphView`, gained `setVisibleData()` and
+  `highlight(nodeIds)`, `highlightObjects()` narrowed to `private`. The
+  reference-identity check is centralized in a private `trackVisible()` called
+  from `loadData()`, `updateData()` (all four return paths), and
+  `setVisibleData()`.
+- `main.ts` — collapsed to `graphFilters.setView(view)`, and the `AutoRefresh`
+  callback goes through a `const view: GraphView = graphRenderer` local as the
+  plan suggested.
+
+### Divergences
+
+**1. `tsc --noEmit` was already failing on `main` — 8 pre-existing errors.**
+The plan assumed it was clean. Gating `build` on it meant fixing them first:
+
+- 7 in `GraphRenderer.init()`. Root cause is upstream: `3d-force-graph`'s
+  `ForceGraph3DInstance` is a *circular* type alias
+  (`type X<N,L> = Generic<X<N,L>, N, L>`), so the fluent chain loses its type
+  after the first accessor call and `.nodeRelSize` fails to resolve. Fixed by
+  typing the constructor result as `any` — consistent with the existing
+  `private graph: any` field — and annotating the six callback params. No
+  runtime change. Worth revisiting if upstream fixes the type.
+- 1 in `GuiControls.ts`: the `graphFilters` field was assigned in the
+  constructor and never read — fully dead. Removed the field *and* the
+  constructor param, so `main.ts` now calls
+  `new GuiControls(graphRenderer, autoRefresh)`. This is why the
+  "no changes in `GuiControls.ts`" criterion above is qualified. Unrelated to
+  the refactor itself; it was just the last thing standing between the repo and
+  a clean typecheck.
+
+**2. `GraphRenderer.getGraph()` now has zero callers.** The plan said to keep it
+public for `GuiControls`, but `GuiControls` never used it — `main.ts` was the
+only caller and that line is gone. Left in place rather than widen the diff;
+a candidate for deletion whenever `GraphRenderer` is next touched.
+
+**3. Vitest was added, and the "optional" test work was done up front.** 23
+tests across `GraphFilters.test.ts` (21) and `graphUtils.test.ts` (2), covering
+every case the plan listed plus: no-data, no-match, endpoints already resolved
+to `GraphNode` objects by 3d-force-graph, the empty-term reference-identity
+contract that `setVisibleData()` depends on, and the two named regression paths
+driven through a `FakeGraphView`.
+
+**4. Frontend scripts.** `typecheck` / `test` / `test:watch` added;
+`build` is now `npm run typecheck && vite build`. This also means the Docker
+frontend stage typechecks — `npm ci` installs devDependencies, so `tsc` is
+present. `CLAUDE.md` was updated to match.

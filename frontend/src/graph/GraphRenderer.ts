@@ -110,10 +110,6 @@ export class GraphRenderer implements GraphView {
     }
   }
 
-  public getGraph(): any {
-    return this.graph;
-  }
-
   public updateNodeColors(): void {
     this.graph.nodeColor(getNodeColor);
   }

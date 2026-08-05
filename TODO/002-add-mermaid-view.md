@@ -1,12 +1,17 @@
 # TODO: Add an Alternative 2D View (Mermaid.js / Cytoscape.js)
 
 Feasibility assessment for adding a 2D pipeline view alongside the existing
-3D force-directed graph. **Status: assessment only — no code has been written.**
+3D force-directed graph.
+
+**Status: Phase 1 done, Phases 0 and 2–5 not started.** The `GraphView`
+refactor that this depended on has landed
+([002a](./002a-refactor-GraphFilters.md)); no 2D renderer code has been written,
+and the Mermaid-vs-Cytoscape decision is still open.
 
 The headline finding is that this is very feasible: the backend needs no changes
-at all, and the frontend already contains the seam a second view would plug
-into. The bulk of the real work is not rendering — it is *reduction*, because
-some pipelines run to ~250 edges (jobs) and a 250-edge 2D layout is unreadable
+at all, and the frontend now has an explicit interface a second view plugs into.
+The bulk of the real work is not rendering — it is *reduction*, because some
+pipelines run to ~250 edges (jobs) and a 250-edge 2D layout is unreadable
 without it.
 
 ---
@@ -16,7 +21,7 @@ without it.
 | Area | Verdict |
 | --- | --- |
 | Backend / API changes | None required |
-| Frontend architecture | Already ~80% ready; one modest refactor needed (split out into [002a](./002a-refactor-GraphFilters.md)) |
+| Frontend architecture | Ready — the `GraphView` refactor ([002a](./002a-refactor-GraphFilters.md)) is ✅ **done** |
 | Mermaid.js fit | Good for *export/share*, awkward for *interactivity* |
 | Cytoscape.js fit | Better for a fully interactive 2D view |
 | Scale (250 edges) | Renders, but needs reduction strategies to be useful |
@@ -57,20 +62,34 @@ exists; we are not inventing an abstraction.
 
 ---
 
-## 🔧 The One Real Refactor
+## ✅ The One Real Refactor — Done
 
-`GraphFilters` is only *partly* decoupled from the 3D renderer — it holds the
-`ForceGraph3D` instance directly and its highlight mode traverses the Three.js
-scene. A second view needs it to talk to an interface instead.
+`GraphFilters` used to be only *partly* decoupled from the 3D renderer — it
+held the `ForceGraph3D` instance directly and its highlight mode traversed the
+Three.js scene. A second view needed it to talk to an interface instead.
 
-**This has been carved out into its own plan:
-[002a-refactor-GraphFilters.md](./002a-refactor-GraphFilters.md).** It extracts
-a `GraphView` interface (`loadData / updateData / setVisibleData / highlight /
-clearHighlights`) implemented by `GraphRenderer`, with scope contained to
-`GraphFilters.ts`, `GraphRenderer.ts`, `main.ts`, and one new file.
+**This is complete** — see
+[002a-refactor-GraphFilters.md](./002a-refactor-GraphFilters.md). A `GraphView`
+interface (`loadData / updateData / setVisibleData / highlight /
+clearHighlights`) now lives in `frontend/src/graph/GraphView.ts` and is
+implemented by `GraphRenderer`. `GraphFilters` imports nothing from `three` or
+`3d-force-graph`.
 
-It is a prerequisite for a 2D view but stands on its own, and can land
-independently of any decision below.
+**What this means for a 2D view:** implement `GraphView` and hand the instance
+to `graphFilters.setView()`. The "a link is included when both endpoints are"
+rule lives inside each implementation's `highlight()`, derived from the node-id
+set it is given — so a 2D view expresses it however it likes (a CSS class, a
+Cytoscape class) without re-deriving the filter semantics. Note that
+`GuiControls` still takes the concrete `GraphRenderer`, so a view *toggle*
+(Phase 2) will need to deal with that.
+
+Two useful side effects for the work below:
+
+- `computeFilter()` now has unit test coverage (Vitest, `npm test` in
+  `frontend/`), so the reduction strategies in
+  [The 250-Edge Problem](#-the-250-edge-problem) can be built against a
+  pinned-down filter contract.
+- `npm run build` now typechecks (`tsc --noEmit && vite build`).
 
 ---
 
@@ -178,14 +197,14 @@ we go the Mermaid route.
       `_process_jobs_to_graph()`. Small, and required for stable Mermaid text
       output. Backend tests already cover this function
       (`backend/tests/unit/test_pipeline_graph_processing.py`).
-- [ ] **Phase 1 — Extract a `GraphView` interface.** Decouple `GraphFilters`
-      from `ForceGraph3D`; make `GraphRenderer` the first implementation.
-      *Small/medium.* Planned separately in
-      [002a-refactor-GraphFilters.md](./002a-refactor-GraphFilters.md) —
-      independently useful, so it need not wait on the Mermaid/Cytoscape
-      decision.
+- [x] **Phase 1 — Extract a `GraphView` interface.** ✅ **Done.** `GraphFilters`
+      is decoupled from `ForceGraph3D` and `GraphRenderer` is the first
+      implementation. See
+      [002a-refactor-GraphFilters.md](./002a-refactor-GraphFilters.md).
 - [ ] **Phase 2 — Add a view toggle.** URL hash (`#/2d`) or a `lil-gui`
-      control in `GuiControls`. *Small.*
+      control in `GuiControls`. *Small.* Note `GuiControls` takes the concrete
+      `GraphRenderer`, so this phase decides how 3D-specific settings behave
+      when a non-3D view is active.
 - [ ] **Phase 3 — Build the 2D renderer.** Data → diagram, render, pan/zoom,
       rebind click/hover for edges. *Medium.* Decide Mermaid vs Cytoscape
       first (see recommendation above).
@@ -216,10 +235,16 @@ we go the Mermaid route.
 - [backend/app/main.py](../backend/app/main.py) — `_process_jobs_to_graph()`,
   `/api/pipeline_graph`
 - [backend/app/lib/ts.py](../backend/app/lib/ts.py) — `JobInfo`, `StorageNode`
+- [frontend/src/graph/GraphView.ts](../frontend/src/graph/GraphView.ts) —
+  the interface a 2D view must implement
 - [frontend/src/graph/GraphFilters.ts](../frontend/src/graph/GraphFilters.ts) —
   `computeFilter()`, the shared filter seam
+- [frontend/src/graph/GraphFilters.test.ts](../frontend/src/graph/GraphFilters.test.ts) —
+  filter-semantics coverage, incl. a `FakeGraphView` worth copying for a 2D view
 - [frontend/src/graph/GraphRenderer.ts](../frontend/src/graph/GraphRenderer.ts) —
-  the 3D view to be abstracted behind `GraphView`
+  the 3D `GraphView` implementation
+- [frontend/src/graph/graphUtils.ts](../frontend/src/graph/graphUtils.ts) —
+  `endpointId()`, for resolving `string | GraphNode` link endpoints
 - [frontend/src/graph/GraphColors.ts](../frontend/src/graph/GraphColors.ts) —
   palette to reuse in 2D
 - [frontend/src/controls/JobsTable.ts](../frontend/src/controls/JobsTable.ts) —
