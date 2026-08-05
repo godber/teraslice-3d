@@ -1,12 +1,10 @@
 import { GUI } from 'lil-gui';
 import { colors } from '../graph/GraphColors.js';
 import { GraphRenderer } from '../graph/GraphRenderer.js';
-import { GraphFilters } from '../graph/GraphFilters.js';
 import { AutoRefresh } from '../utils/autoRefresh.js';
 
 export class GuiControls {
   private graphRenderer: GraphRenderer;
-  private graphFilters: GraphFilters;
   private autoRefresh: AutoRefresh;
   private gui: GUI | null;
   private connectionStatus: 'unknown' | 'connected' | 'error';
@@ -15,9 +13,8 @@ export class GuiControls {
   private lastUpdateController: any;
   private refreshState: any;
 
-  constructor(graphRenderer: GraphRenderer, graphFilters: GraphFilters, autoRefresh: AutoRefresh) {
+  constructor(graphRenderer: GraphRenderer, autoRefresh: AutoRefresh) {
     this.graphRenderer = graphRenderer;
-    this.graphFilters = graphFilters;
     this.autoRefresh = autoRefresh;
     this.gui = null;
     this.connectionStatus = 'unknown';

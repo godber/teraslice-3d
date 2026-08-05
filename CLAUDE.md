@@ -12,8 +12,12 @@ code in this repository.
 * When you are done editing files and before changes are committed you should:
   * Always run backend Python tests
     * `cd backend && uv add --group test pytest pytest-asyncio && uv run pytest && cd -`
+  * Always run frontend tests
+    * `cd frontend && npm install && npm test && cd -`
   * Always do a test build of the frontend
     * `cd frontend && npm install && npm run build && cd -`
+    * `npm run build` runs `tsc --noEmit` before `vite build`, so this also
+      typechecks. `npm run typecheck` runs that step alone.
   * Fix any errors or failures you encounter.
 
 ## Project Overview
@@ -79,11 +83,18 @@ cd frontend && npm install
 # Development server with HMR (runs on http://localhost:5173)
 cd frontend && npm run dev
 
-# Production build
+# Typecheck only
+cd frontend && npm run typecheck
+
+# Production build (typechecks first)
 cd frontend && npm run build
 
 # Preview production build
 cd frontend && npm run preview
+
+# Unit tests (Vitest)
+cd frontend && npm test
+cd frontend && npm run test:watch
 ```
 
 During development, the frontend proxies to the backend so the backend must also
