@@ -1,6 +1,6 @@
 import { GraphData, GraphNode, GraphLink, FilterState } from '../types/graph.js';
-import { GraphRenderer } from './GraphRenderer.js';
-import * as THREE from 'three';
+import type { GraphView } from './GraphView.js';
+import { endpointId } from './graphUtils.js';
 
 type FilterChangeCallback = () => void;
 
@@ -13,21 +13,15 @@ interface FilterResult {
   links: GraphLink[];
 }
 
-function endpointId(endpoint: string | GraphNode): string {
-  return typeof endpoint === 'object' ? endpoint.id : endpoint;
-}
-
 export class GraphFilters {
   private originalData: GraphData | null;
-  private graph: any; // ForceGraph3D instance
-  private graphRenderer: GraphRenderer | null;
+  private view: GraphView | null;
   private filterState: FilterState;
   private changeCallbacks: FilterChangeCallback[];
 
   constructor() {
     this.originalData = null;
-    this.graph = null;
-    this.graphRenderer = null;
+    this.view = null;
     this.filterState = {
       searchTerm: '',
       filterMode: 'Highlight'
@@ -123,20 +117,18 @@ export class GraphFilters {
     return this.computeFilter(searchTerm).nodes;
   }
 
-  public setGraph(graph: any): void {
-    this.graph = graph;
-  }
-
-  public setGraphRenderer(graphRenderer: GraphRenderer): void {
-    this.graphRenderer = graphRenderer;
+  /**
+   * Attach the view this filter drives. GraphFilters decides *what* is
+   * visible or interesting; the view decides how to render it.
+   */
+  public setView(view: GraphView): void {
+    this.view = view;
   }
 
   public setFilterMode(mode: 'Remove' | 'Highlight'): void {
     this.filterState.filterMode = mode;
     // Clear any existing highlights when switching modes
-    if (this.graphRenderer) {
-      this.graphRenderer.clearHighlights();
-    }
+    this.view?.clearHighlights();
   }
 
   public getFilterState(): FilterState {
@@ -144,19 +136,15 @@ export class GraphFilters {
   }
 
   public filterGraphData(searchTerm: string = ''): void {
-    if (!this.originalData || !this.graph) return;
+    if (!this.originalData || !this.view) return;
 
     this.filterState.searchTerm = searchTerm;
 
     if (!searchTerm) {
-      // Clear all filters; restore original data only if graph was filtered
-      const currentData = this.graph.graphData();
-      if (!currentData || currentData.nodes?.length !== this.originalData.nodes?.length || currentData.links?.length !== this.originalData.links?.length) {
-        this.graph.graphData(this.originalData);
-      }
-      if (this.graphRenderer) {
-        this.graphRenderer.clearHighlights();
-      }
+      // Clear all filters and restore the full dataset. The view is
+      // responsible for skipping the work if it is already showing it.
+      this.view.setVisibleData(this.originalData);
+      this.view.clearHighlights();
       this.notifyFilterChange();
       return;
     }
@@ -173,51 +161,16 @@ export class GraphFilters {
   private applyRemoveMode(searchTerm: string): void {
     const { nodes, links } = this.computeFilter(searchTerm);
 
-    this.graph.graphData({ nodes, links });
+    this.view!.setVisibleData({ nodes, links });
 
     // Clear any highlights in remove mode
-    if (this.graphRenderer) {
-      this.graphRenderer.clearHighlights();
-    }
+    this.view!.clearHighlights();
   }
 
   private applyHighlightMode(searchTerm: string): void {
-    // Keep all original data visible; only re-set graphData if it was previously reduced/filtered
-    const currentData = this.graph.graphData();
-    if (!currentData || currentData.nodes?.length !== this.originalData!.nodes?.length || currentData.links?.length !== this.originalData!.links?.length) {
-      this.graph.graphData(this.originalData!);
-    }
-
-    if (!this.graphRenderer) {
-      console.warn('GraphRenderer not available for highlight mode');
-      return;
-    }
-
-    const { nodeIds } = this.computeFilter(searchTerm);
-
-    // Find the actual 3D objects in the scene to highlight. A node is
-    // highlighted when it is in the filter result; a link is highlighted when
-    // both of its endpoints are, which mirrors computeFilter()'s link rule.
-    const objectsToHighlight: THREE.Object3D[] = [];
-    const scene = this.graph.scene();
-
-    scene.traverse((child: any) => {
-      if (child.isMesh) {
-        if (child.__graphObjType === 'node' && child.__data && nodeIds.has(child.__data.id)) {
-          objectsToHighlight.push(child);
-        } else if (child.__graphObjType === 'link' && child.__data) {
-          const linkData = child.__data;
-          if (linkData.source && linkData.target &&
-              nodeIds.has(endpointId(linkData.source)) &&
-              nodeIds.has(endpointId(linkData.target))) {
-            objectsToHighlight.push(child);
-          }
-        }
-      }
-    });
-
-    console.log(`Highlighting ${objectsToHighlight.length} objects (nodes and links)`);
-    this.graphRenderer.highlightObjects(objectsToHighlight);
+    // Keep all original data visible and let the view highlight the subset.
+    this.view!.setVisibleData(this.originalData!);
+    this.view!.highlight(this.computeFilter(searchTerm).nodeIds);
   }
 
   public clearFilters(): void {

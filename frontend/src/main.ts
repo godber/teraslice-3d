@@ -1,5 +1,6 @@
 import { GraphRenderer } from './graph/GraphRenderer.js';
 import { GraphFilters } from './graph/GraphFilters.js';
+import type { GraphView } from './graph/GraphView.js';
 import { GuiControls } from './controls/GuiControls.js';
 import { SearchBar } from './controls/SearchBar.js';
 import { JobsTable } from './controls/JobsTable.js';
@@ -31,14 +32,15 @@ async function initializeApp(): Promise<void> {
   // Initialize core components
   const graphRenderer = new GraphRenderer(elem);
   const graphFilters = new GraphFilters();
-  
-  // Connect filters to graph
-  graphFilters.setGraph(graphRenderer.getGraph());
-  graphFilters.setGraphRenderer(graphRenderer);
-  
+
+  // Connect filters to the graph via the narrow GraphView contract. GuiControls
+  // still needs the concrete GraphRenderer for its 3D-specific settings.
+  const view: GraphView = graphRenderer;
+  graphFilters.setView(view);
+
   // Initialize auto-refresh
   const autoRefresh = new AutoRefresh((newData) => {
-    const reconciledData = graphRenderer.updateData(newData);
+    const reconciledData = view.updateData(newData);
     graphFilters.setOriginalData(reconciledData);
     // Re-apply the active filter to the refreshed data so the graph and
     // jobs table stay in sync with the current search term.
@@ -46,7 +48,7 @@ async function initializeApp(): Promise<void> {
   });
 
   // Initialize GUI controls with auto-refresh
-  new GuiControls(graphRenderer, graphFilters, autoRefresh);
+  new GuiControls(graphRenderer, autoRefresh);
 
   // Bottom search bar + jobs table drawer
   const jobsTable = new JobsTable(graphFilters);

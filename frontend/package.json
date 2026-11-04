@@ -4,8 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "3d-force-graph": "^1.77.0",
@@ -15,6 +18,7 @@
     "@types/node": "^24.0.14",
     "@types/three": "^0.178.1",
     "typescript": "^5.8.3",
-    "vite": "^5.0.0"
+    "vite": "^5.0.0",
+    "vitest": "^4.1.10"
   }
 }
