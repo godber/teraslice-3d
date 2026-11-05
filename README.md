@@ -78,6 +78,20 @@ cd frontend && npm run preview
 
 **Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`npm run dev`) servers simultaneously.
 
+### Docker Compose (development)
+
+Run the backend and frontend together with hot reload:
+
+```bash
+cp .env.example .env   # then edit TERASLICE_URL etc.
+docker compose up
+```
+
+Open http://localhost:5173 (frontend, proxies `/api` to the backend). The backend
+is also available directly on http://localhost:8000. Settings come from `.env`
+(see `.env.example`). Use `host.docker.internal` to reach a Teraslice running on
+your host machine.
+
 ### Architecture
 
 - **Frontend**: ThreeJS with Vite-based build system with ES modules

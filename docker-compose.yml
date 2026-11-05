@@ -1,0 +1,34 @@
+# Development environment: backend (FastAPI) + frontend (Vite) with hot reload.
+# Setup: cp .env.example .env, edit it, then `docker compose up`.
+# Open http://localhost:5173
+services:
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+    working_dir: /backend
+    command: uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
+    env_file: .env
+    environment:
+      UV_PROJECT_ENVIRONMENT: /opt/venv # keep the venv off the bind mount
+    volumes:
+      - ./backend:/backend
+      - backend-venv:/opt/venv
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /frontend
+    command: sh -c "npm install && npm run dev"
+    environment:
+      VITE_API_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/frontend
+      - frontend-node-modules:/frontend/node_modules # avoid host/container native-module clashes
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  backend-venv:
+  frontend-node-modules:
