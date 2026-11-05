@@ -87,6 +87,10 @@ cp .env.example .env   # then edit TERASLICE_URL etc.
 docker compose up
 ```
 
+A `justfile` wraps the common tasks (`just` lists them): `just up`, `just down`,
+`just logs [service]`, `just restart [service]`, `just clean`, and `just check`
+to run all tests plus the frontend build.
+
 Open http://localhost:5173 (frontend, proxies `/api` to the backend). The backend
 is also available directly on http://localhost:8000. Settings come from `.env`
 (see `.env.example`). Use `host.docker.internal` to reach a Teraslice running on
