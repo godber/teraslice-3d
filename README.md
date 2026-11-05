@@ -20,7 +20,7 @@ internal naming conventions that not everyone may follow.
 ### Prerequisites
 
 * Python 3.11 or higher
-* Node.js 18 or higher
+* Node.js 24 or higher
 * uv package manager for Python
 
 ### Installing uv
@@ -43,7 +43,7 @@ cd teraslice-3d
 cd backend && uv sync && cd ..
 
 # Install frontend dependencies
-cd frontend && npm install && cd ..
+cd frontend && pnpm install && cd ..
 ```
 
 ## Development
@@ -64,19 +64,37 @@ The frontend has been restructured into a modern Vite-based project with modular
 
 ```bash
 # Install frontend dependencies
-cd frontend && npm install
+cd frontend && pnpm install
 
 # Development server with Hot Module Replacement (runs on http://localhost:5173)
-cd frontend && npm run dev
+cd frontend && pnpm run dev
 
 # Production build
-cd frontend && npm run build
+cd frontend && pnpm run build
 
 # Preview production build
-cd frontend && npm run preview
+cd frontend && pnpm run preview
 ```
 
-**Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`npm run dev`) servers simultaneously.
+**Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`pnpm run dev`) servers simultaneously.
+
+### Docker Compose (development)
+
+Run the backend and frontend together with hot reload:
+
+```bash
+cp .env.example .env   # then edit TERASLICE_URL etc.
+docker compose up
+```
+
+A `justfile` wraps the common tasks (`just` lists them): `just up`, `just down`,
+`just logs [service]`, `just restart [service]`, `just clean`, and `just check`
+to run all tests plus the frontend build.
+
+Open http://localhost:5173 (frontend, proxies `/api` to the backend). The backend
+is also available directly on http://localhost:8000. Settings come from `.env`
+(see `.env.example`). Use `host.docker.internal` to reach a Teraslice running on
+your host machine.
 
 ### Architecture
 
@@ -150,7 +168,7 @@ Validate the frontend build process:
 
 ```bash
 # Install dependencies and build
-cd frontend && npm install && npm run build
+cd frontend && pnpm install && pnpm run build
 ```
 
 The frontend build generates optimized production assets in `frontend/dist/` that are served by the FastAPI application.

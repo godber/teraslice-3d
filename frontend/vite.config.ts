@@ -11,8 +11,10 @@ export default defineConfig({
     }
   },
   server: {
+    host: true, // listen on 0.0.0.0 so the port is reachable from Docker
     proxy: {
-      '/api': 'http://localhost:8000'
+      // VITE_API_TARGET is set in docker-compose.yml; defaults to local backend
+      '/api': process.env.VITE_API_TARGET ?? 'http://localhost:8000'
     }
   }
 })

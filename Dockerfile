@@ -1,10 +1,11 @@
 # Stage 1: Frontend build stage using Node.js base image
-FROM node:18-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
+RUN corepack enable
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
-RUN npm run build
+RUN pnpm run build
 
 # Stage 2: Python build stage
 FROM python:3.13-slim AS python-builder

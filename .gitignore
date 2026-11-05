@@ -15,3 +15,9 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 xcuserdata/
 
+
+# Local environment
+.env
+
+# Local CA certificates for docker compose dev
+certs/
