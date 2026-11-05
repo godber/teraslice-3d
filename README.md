@@ -20,7 +20,7 @@ internal naming conventions that not everyone may follow.
 ### Prerequisites
 
 * Python 3.11 or higher
-* Node.js 18 or higher
+* Node.js 24 or higher
 * uv package manager for Python
 
 ### Installing uv

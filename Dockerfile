@@ -1,5 +1,5 @@
 # Stage 1: Frontend build stage using Node.js base image
-FROM node:22-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 RUN corepack enable
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
