@@ -219,4 +219,13 @@ async def clear_cache():
     cache.clear()
     return {"message": "Cache cleared successfully", "status": cache.get_status()}
 
-app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
+FRONTEND_DIST = Path("../frontend/dist")
+
+# In dev mode the Vite dev server serves the frontend, so dist may not exist.
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+else:
+    logger.warning(
+        "%s not found; not serving the static frontend (expected in dev mode)",
+        FRONTEND_DIST,
+    )

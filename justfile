@@ -58,11 +58,11 @@ test-backend:
 
 # Run frontend tests
 test-frontend:
-    cd frontend && npm install && npm test
+    cd frontend && pnpm install && pnpm test
 
 # Typecheck and production-build the frontend
 build-frontend:
-    cd frontend && npm install && npm run build
+    cd frontend && pnpm install && pnpm run build
 
 # Run all tests and the frontend build
 check: test build-frontend

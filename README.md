@@ -43,7 +43,7 @@ cd teraslice-3d
 cd backend && uv sync && cd ..
 
 # Install frontend dependencies
-cd frontend && npm install && cd ..
+cd frontend && pnpm install && cd ..
 ```
 
 ## Development
@@ -64,19 +64,19 @@ The frontend has been restructured into a modern Vite-based project with modular
 
 ```bash
 # Install frontend dependencies
-cd frontend && npm install
+cd frontend && pnpm install
 
 # Development server with Hot Module Replacement (runs on http://localhost:5173)
-cd frontend && npm run dev
+cd frontend && pnpm run dev
 
 # Production build
-cd frontend && npm run build
+cd frontend && pnpm run build
 
 # Preview production build
-cd frontend && npm run preview
+cd frontend && pnpm run preview
 ```
 
-**Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`npm run dev`) servers simultaneously.
+**Note:** During development, the frontend development server proxies API requests to the backend, so you need to run both the backend (`uv run fastapi dev`) and frontend (`pnpm run dev`) servers simultaneously.
 
 ### Docker Compose (development)
 
@@ -168,7 +168,7 @@ Validate the frontend build process:
 
 ```bash
 # Install dependencies and build
-cd frontend && npm install && npm run build
+cd frontend && pnpm install && pnpm run build
 ```
 
 The frontend build generates optimized production assets in `frontend/dist/` that are served by the FastAPI application.

@@ -13,6 +13,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        package_json_file: frontend/package.json
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: frontend/pnpm-lock.yaml
+
     - name: Install uv
       uses: astral-sh/setup-uv@v4
       with:
@@ -25,7 +37,7 @@ jobs:
       run: |
         # The frontend build is required for the backend tests
         # as it serves static assets used in the tests
-        cd frontend && npm install && npm run build && cd -
+        cd frontend && pnpm install --frozen-lockfile && pnpm run build && cd -
         cd backend && uv sync --group test && cd -
 
     - name: Run tests

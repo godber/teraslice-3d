@@ -3,7 +3,7 @@
 # Open http://localhost:5173
 services:
   backend:
-    image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+    image: ghcr.io/astral-sh/uv:python3.13-trixie-slim
     working_dir: /backend
     command: uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
     env_file: .env
@@ -12,13 +12,14 @@ services:
     volumes:
       - ./backend:/backend
       - backend-venv:/opt/venv
+      - ./certs:/certs:ro # optional custom CA bundle; see CACERT_FILE in .env.example
     ports:
       - "8000:8000"
 
   frontend:
     image: node:22-alpine
     working_dir: /frontend
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "corepack enable && pnpm install && pnpm run dev"
     environment:
       VITE_API_TARGET: http://backend:8000
     volumes:
